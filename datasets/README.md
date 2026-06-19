@@ -4,13 +4,13 @@ Raw CAD datasets are not committed to GitHub. Store shared datasets in the
 project SharePoint or cloud storage location and copy them into this folder, or
 reference them from any local path when running the CLI.
 
-## Shared Storage Pattern
+## Shared Storage Option
 
-Use one SharePoint root folder for the team, then organize datasets under that
-root by source and type. The repo should document dataset metadata, not store
-the actual files.
+The SharePoint layout does not have to match the repo folder layout. A simple
+single SharePoint folder is enough while the project is small.
 
-Example SharePoint layout:
+If the number of datasets grows, one reasonable option is to use a single
+SharePoint root folder and organize files by source and dataset type:
 
 ```text
 SyntheticCAD Datasets/
@@ -23,7 +23,9 @@ SyntheticCAD Datasets/
   private-agency-samples/
 ```
 
-See `catalog.example.yml` for the metadata shape the repo can track.
+This is only an example. The important part is that each dataset has a clear
+file name, source, date downloaded, and mapping file. See `catalog.example.yml`
+for the metadata shape the repo can track.
 
 ## Seattle Public CAD Dataset
 
@@ -42,12 +44,3 @@ python -m syntheticcad.cli profile datasets\Call_Data_20260619.csv --out-dir out
 ```
 
 The full dataset used during development had 572,296 rows and 47 columns.
-
-## Team Practice
-
-- Keep raw datasets in cloud storage, not Git.
-- Keep cloud-sharing links out of public documentation if they are restricted.
-- Record source URL, download date, file name, and checksum when adding a new
-  dataset to the shared storage folder.
-- Prefer broad geography fields such as neighborhood, precinct, sector, or beat
-  over address-level fields for validation and export.
