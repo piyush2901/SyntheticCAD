@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local datasets and generated artifacts
+datasets/**/*.csv
+datasets/**/*.tsv
+datasets/**/*.xlsx
+datasets/**/*.parquet
+datasets/**/*.jsonl
+outputs/**
+!outputs/
+!outputs/README.md
+work/**
+!work/
+!work/README.md
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
