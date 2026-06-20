@@ -1,31 +1,21 @@
 # Datasets
 
-Raw CAD datasets are not committed to GitHub. Store shared datasets in the
-project SharePoint or cloud storage location and copy them into this folder, or
-reference them from any local path when running the CLI.
+Raw CAD datasets are not committed to GitHub. The team should use the shared
+OneDrive folder as the source for dataset files, then download or sync the CSV
+locally before running the scripts.
 
-## Shared Storage Option
+## How To Use The Shared OneDrive Folder
 
-The SharePoint layout does not have to match the repo folder layout. A simple
-single SharePoint folder is enough while the project is small.
+The Python CLI reads files from the local computer. It does not read directly
+from an online OneDrive browser link.
 
-If the number of datasets grows, one reasonable option is to use a single
-SharePoint root folder and organize files by source and dataset type:
+Each team member should do one of the following:
 
-```text
-SyntheticCAD Datasets/
-  public-cad/
-    seattle/
-      Call_Data_20260619.csv
-    baltimore/
-      911_CallsForService_2025.csv
-  public-crime/
-  private-agency-samples/
-```
+1. Download the CSV from the shared OneDrive folder and place it in `datasets/`.
+2. Sync the OneDrive folder locally and pass the synced file path to the CLI.
 
-This is only an example. The important part is that each dataset has a clear
-file name, source, date downloaded, and mapping file. See `catalog.example.yml`
-for the metadata shape the repo can track.
+The repo only documents the expected file name and commands. The actual dataset
+file stays in OneDrive.
 
 ## Seattle Public CAD Dataset
 
@@ -36,11 +26,17 @@ Current prototype dataset:
 - Source system: Seattle public CAD call data export
 - Usage: public sample data for pipeline testing and validation dashboard work
 
-After downloading the file from shared storage, verify the row/column count by
-running:
+After downloading the file from OneDrive into `datasets/`, verify the row/column
+count by running:
 
 ```powershell
 python -m syntheticcad.cli profile datasets\Call_Data_20260619.csv --out-dir outputs\seattle_2025_profile
+```
+
+If the file is synced somewhere else on your machine, pass that path instead:
+
+```powershell
+python -m syntheticcad.cli profile "C:\path\to\Call_Data_20260619.csv" --out-dir outputs\seattle_2025_profile
 ```
 
 The full dataset used during development had 572,296 rows and 47 columns.
