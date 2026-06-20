@@ -25,7 +25,6 @@ syntheticcad/           Core Python package
 configs/mappings/       Reusable field mappings for known public datasets
 datasets/               Local data staging folder; raw data is not committed
 outputs/                Generated reports and synthetic exports; not committed
-work/                   Scratch space for generated sample files
 requirements.txt        Python dependencies
 ```
 
