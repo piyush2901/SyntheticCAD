@@ -62,33 +62,6 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 Then activate the environment again.
 
-## Quick Start With Generated Sample Data
-
-Create a small CAD-like sample file:
-
-```powershell
-python -m syntheticcad.cli make-sample --out work\sample_cad.csv
-```
-
-Profile the sample file and create a mapping guide:
-
-```powershell
-python -m syntheticcad.cli profile work\sample_cad.csv --out-dir outputs\profile
-```
-
-Generate a baseline synthetic export:
-
-```powershell
-python -m syntheticcad.cli synthesize work\sample_cad.csv --mapping outputs\profile\mapping_suggested.json --out-dir outputs\synthetic_run
-```
-
-Generated outputs include:
-
-- `synthetic_cad.csv`
-- `validation_report.json`
-- `executive_dashboard.html`
-- `disclaimer.txt`
-
 ## Run The Seattle Public CAD Example
 
 Place the Seattle CSV at any local path. The examples below assume:
@@ -114,6 +87,13 @@ Open the executive dashboard:
 ```text
 outputs/seattle_2025_full_run/executive_dashboard.html
 ```
+
+Generated outputs include:
+
+- `synthetic_cad.csv`
+- `validation_report.json`
+- `executive_dashboard.html`
+- `disclaimer.txt`
 
 ## Current Boundaries
 
