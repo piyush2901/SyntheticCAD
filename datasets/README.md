@@ -7,11 +7,9 @@ locally before running the scripts.
 ## How To Use The Shared OneDrive Folder
 
 The Python CLI reads files from the local computer. It does not read directly
-from an online OneDrive browser link.
+from this [OneDrive link](https://1drv.ms/f/c/82fa650f732dbbc5/IgCTnXLhMmZ-R6fY1d6udl-_AX1Kdjvg1DGSyYg052eYfA0?e=CpC7zX)
 
 Each team member should do one of the following:
-
-https://1drv.ms/f/c/82fa650f732dbbc5/IgCTnXLhMmZ-R6fY1d6udl-_AX1Kdjvg1DGSyYg052eYfA0?e=CpC7zX
 
 1. Download the CSV from the shared OneDrive folder and place it in `datasets/`.
 2. Sync the OneDrive folder locally and pass the synced file path to the CLI.
