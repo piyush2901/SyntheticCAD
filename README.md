@@ -31,7 +31,7 @@ requirements.txt        Python dependencies
 ## Dataset Storage
 
 Raw datasets are intentionally excluded from GitHub. Team members should download
-the shared dataset from the project cloud storage location and place it locally.
+the shared dataset from the project cloud storage [OneDrive link](https://1drv.ms/f/c/82fa650f732dbbc5/IgCTnXLhMmZ-R6fY1d6udl-_AX1Kdjvg1DGSyYg052eYfA0?e=CpC7zX).
 
 Example local path for the Seattle sample dataset:
 
