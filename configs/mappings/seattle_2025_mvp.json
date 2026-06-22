@@ -1,0 +1,30 @@
+{
+  "fields": {
+    "event_id": "CAD Event Number",
+    "call_received_datetime": "CAD Event Original Time Queued",
+    "location": "Dispatch Neighborhood",
+    "latitude": "Dispatch Latitude",
+    "longitude": "Dispatch Longitude",
+    "call_type": "Final Call Type",
+    "priority": "Priority",
+    "disposition": "CAD Event Clearance Description",
+    "unit_id": "Call Sign Dispatch ID",
+    "dispatch_time": "Call Sign Dispatch Time",
+    "arrival_time": "Call Sign at Scene Time",
+    "clearance_time": "Call Sign In-Service Time"
+  },
+  "extra_event_fields": [
+    "Call Type",
+    "Initial Call Type",
+    "Dispatch Precinct",
+    "Dispatch Sector",
+    "Dispatch Beat",
+    "Dispatch Reporting Area",
+    "CAD Event Response Category",
+    "Call Type Indicator",
+    "Call Type Received Classification",
+    "Count Of Officers",
+    "Event Group"
+  ],
+  "extra_unit_fields": []
+}
