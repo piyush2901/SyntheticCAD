@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SyntheticCAD Executive Validation Dashboard</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5d6875;
+      --line: #d7dde5;
+      --soft: #f5f7fa;
+      --panel: #ffffff;
+      --blue: #2563eb;
+      --green: #0f766e;
+      --amber: #b45309;
+      --red: #b91c1c;
+      --real: #2563eb;
+      --synthetic: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: #eef2f6;
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+    header {
+      padding: 28px 0 20px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 22px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 10px; }
+    .subtitle {
+      color: var(--muted);
+      max-width: 920px;
+      font-size: 16px;
+    }
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+    .metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--soft);
+      min-height: 112px;
+    }
+    .metric .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .metric .value {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .metric .note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--green);
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .badge.warn { background: var(--amber); }
+    .badge.stop { background: var(--red); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcfe;
+    }
+    .step-number {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .chart-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+    }
+    .legend {
+      display: flex;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 190px) 1fr 58px;
+      gap: 10px;
+      align-items: center;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+    .bar-label {
+      overflow-wrap: anywhere;
+      color: var(--ink);
+    }
+    .bar-track {
+      position: relative;
+      height: 21px;
+      background: #edf1f5;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar {
+      position: absolute;
+      top: 0;
+      height: 100%;
+    }
+    .bar.real { left: 0; background: var(--real); opacity: .82; }
+    .bar.synthetic { right: 0; background: var(--synthetic); opacity: .82; }
+    .bar-value {
+      color: var(--muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .heatmaps {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .heatmap-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .heatmap {
+      display: grid;
+      grid-template-columns: 34px repeat(24, minmax(10px, 1fr));
+      gap: 2px;
+      align-items: center;
+    }
+    .geo-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(12px, 1fr));
+      gap: 3px;
+      align-items: center;
+    }
+    .geo-cell {
+      aspect-ratio: 1 / 1;
+      min-height: 13px;
+      border-radius: 3px;
+      background: #eef2f6;
+    }
+    .heatmap .hour, .heatmap .day {
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+    }
+    .heatmap .day { text-align: right; padding-right: 4px; }
+    .cell {
+      aspect-ratio: 1 / 1;
+      min-height: 10px;
+      border-radius: 2px;
+      background: #eef2f6;
+    }
+    .callout {
+      border-left: 4px solid var(--blue);
+      background: #f7faff;
+      padding: 12px 14px;
+      border-radius: 6px;
+      color: var(--ink);
+    }
+    .limitations {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .limitations li { margin: 7px 0; }
+    footer {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 18px 0 8px;
+    }
+    @media (max-width: 900px) {
+      main { padding: 18px; }
+      .metrics, .two, .steps, .heatmaps {
+        grid-template-columns: 1fr;
+      }
+      .bar-row {
+        grid-template-columns: minmax(86px, 140px) 1fr 48px;
+      }
+      .heatmap {
+        grid-template-columns: 30px repeat(24, minmax(7px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>SyntheticCAD Executive Validation Dashboard</h1>
+    <p class="subtitle">This run used 572,296 real rows to create 572,081 synthetic rows. The synthetic data produced a very close match to the original call-volume pattern. Call type mix differed by at most 0.10 percentage points for any single category.</p>
+  </header>
+
+  <section class="section">
+    <h2>Run Summary</h2>
+    <div class="grid metrics">
+      
+      <div class="metric">
+        <div class="label">Real rows used</div>
+        <div class="value">572,296</div>
+        <div class="note">All loaded rows were used for this run.</div>
+      </div>
+    
+      
+      <div class="metric">
+        <div class="label">Synthetic rows created</div>
+        <div class="value">572,081</div>
+        <div class="note">Synthetic size followed the configured generation settings.</div>
+      </div>
+    
+      
+      <div class="metric">
+        <div class="label">Mapped fields used</div>
+        <div class="value">23 of 47 source fields</div>
+        <div class="note">Only mapped, approved fields are loaded, compared, and exported.</div>
+      </div>
+    
+      
+      <div class="metric">
+        <div class="label">Call pattern match</div>
+        <div class="value">Very close</div>
+        <div class="note">Average day/hour gap: 0.06 percentage points.</div>
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>What The Tool Did</h2>
+    <div class="callout">
+      SyntheticCAD read the source file locally, learned high-level patterns from the mapped fields, generated new records with new event identifiers, and wrote an export package containing the synthetic CSV, validation report, dashboard, and required disclaimer.
+    </div>
+    <div class="steps">
+      
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Read CSV</h3>
+        <p>Loaded 572,296 real rows for this run.</p>
+      </div>
+    
+      
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Mapped fields</h3>
+        <p>Mapped event ID, call time, call type, priority, location.</p>
+      </div>
+    
+      
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Generated data</h3>
+        <p>Created 572,081 synthetic rows with new event IDs.</p>
+      </div>
+    
+      
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3>Checked patterns</h3>
+        <p>Compared call timing, call types, priority, geography, and event structure where available.</p>
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Plain-Language Findings</h2>
+    <p><span class="badge">Call volume: Very close</span><span class="badge">Call types: max gap 0.10 pts</span><span class="badge">Rows per event: 1.69 real / 1.69 synthetic</span></p>
+    <p>The synthetic output is suitable for an early executive review of event-level call patterns. It preserves the broad shape of when calls occur and the mix of major call categories and priorities.</p>
+  </section>
+
+  <section class="section">
+    <h2>Call Volume By Day And Hour</h2>
+    <p class="subtitle">Darker cells mean more calls occurred in that day/hour window. The two grids should have a similar shape, even when exact counts differ.</p>
+    <div class="heatmaps">
+      
+      <div class="chart-panel">
+        <div class="heatmap-title">Real data</div>
+        <div class="heatmap"><div></div><div class="hour">0</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">6</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">12</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">18</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">23</div><div class="day">Mon</div><div class="cell" title="Mon 0:00 - 2,521 calls" style="background: #2563eb; opacity: 0.462;"></div><div class="cell" title="Mon 1:00 - 2,321 calls" style="background: #2563eb; opacity: 0.432;"></div><div class="cell" title="Mon 2:00 - 1,962 calls" style="background: #2563eb; opacity: 0.378;"></div><div class="cell" title="Mon 3:00 - 1,509 calls" style="background: #2563eb; opacity: 0.309;"></div><div class="cell" title="Mon 4:00 - 1,545 calls" style="background: #2563eb; opacity: 0.314;"></div><div class="cell" title="Mon 5:00 - 2,188 calls" style="background: #2563eb; opacity: 0.412;"></div><div class="cell" title="Mon 6:00 - 2,313 calls" style="background: #2563eb; opacity: 0.431;"></div><div class="cell" title="Mon 7:00 - 3,190 calls" style="background: #2563eb; opacity: 0.564;"></div><div class="cell" title="Mon 8:00 - 3,991 calls" style="background: #2563eb; opacity: 0.685;"></div><div class="cell" title="Mon 9:00 - 4,197 calls" style="background: #2563eb; opacity: 0.717;"></div><div class="cell" title="Mon 10:00 - 4,121 calls" style="background: #2563eb; opacity: 0.705;"></div><div class="cell" title="Mon 11:00 - 4,449 calls" style="background: #2563eb; opacity: 0.755;"></div><div class="cell" title="Mon 12:00 - 5,195 calls" style="background: #2563eb; opacity: 0.868;"></div><div class="cell" title="Mon 13:00 - 4,777 calls" style="background: #2563eb; opacity: 0.805;"></div><div class="cell" title="Mon 14:00 - 4,739 calls" style="background: #2563eb; opacity: 0.799;"></div><div class="cell" title="Mon 15:00 - 4,667 calls" style="background: #2563eb; opacity: 0.788;"></div><div class="cell" title="Mon 16:00 - 4,654 calls" style="background: #2563eb; opacity: 0.786;"></div><div class="cell" title="Mon 17:00 - 4,222 calls" style="background: #2563eb; opacity: 0.720;"></div><div class="cell" title="Mon 18:00 - 3,713 calls" style="background: #2563eb; opacity: 0.643;"></div><div class="cell" title="Mon 19:00 - 3,844 calls" style="background: #2563eb; opacity: 0.663;"></div><div class="cell" title="Mon 20:00 - 3,740 calls" style="background: #2563eb; opacity: 0.647;"></div><div class="cell" title="Mon 21:00 - 3,608 calls" style="background: #2563eb; opacity: 0.627;"></div><div class="cell" title="Mon 22:00 - 3,119 calls" style="background: #2563eb; opacity: 0.553;"></div><div class="cell" title="Mon 23:00 - 3,119 calls" style="background: #2563eb; opacity: 0.553;"></div><div class="day">Tue</div><div class="cell" title="Tue 0:00 - 2,673 calls" style="background: #2563eb; opacity: 0.485;"></div><div class="cell" title="Tue 1:00 - 2,096 calls" style="background: #2563eb; opacity: 0.398;"></div><div class="cell" title="Tue 2:00 - 1,901 calls" style="background: #2563eb; opacity: 0.368;"></div><div class="cell" title="Tue 3:00 - 1,519 calls" style="background: #2563eb; opacity: 0.310;"></div><div class="cell" title="Tue 4:00 - 1,450 calls" style="background: #2563eb; opacity: 0.300;"></div><div class="cell" title="Tue 5:00 - 1,947 calls" style="background: #2563eb; opacity: 0.375;"></div><div class="cell" title="Tue 6:00 - 2,363 calls" style="background: #2563eb; opacity: 0.438;"></div><div class="cell" title="Tue 7:00 - 3,329 calls" style="background: #2563eb; opacity: 0.585;"></div><div class="cell" title="Tue 8:00 - 4,119 calls" style="background: #2563eb; opacity: 0.705;"></div><div class="cell" title="Tue 9:00 - 4,434 calls" style="background: #2563eb; opacity: 0.753;"></div><div class="cell" title="Tue 10:00 - 4,702 calls" style="background: #2563eb; opacity: 0.793;"></div><div class="cell" title="Tue 11:00 - 4,586 calls" style="background: #2563eb; opacity: 0.776;"></div><div class="cell" title="Tue 12:00 - 5,354 calls" style="background: #2563eb; opacity: 0.892;"></div><div class="cell" title="Tue 13:00 - 5,368 calls" style="background: #2563eb; opacity: 0.894;"></div><div class="cell" title="Tue 14:00 - 4,982 calls" style="background: #2563eb; opacity: 0.836;"></div><div class="cell" title="Tue 15:00 - 4,767 calls" style="background: #2563eb; opacity: 0.803;"></div><div class="cell" title="Tue 16:00 - 4,357 calls" style="background: #2563eb; opacity: 0.741;"></div><div class="cell" title="Tue 17:00 - 4,316 calls" style="background: #2563eb; opacity: 0.735;"></div><div class="cell" title="Tue 18:00 - 3,933 calls" style="background: #2563eb; opacity: 0.677;"></div><div class="cell" title="Tue 19:00 - 3,985 calls" style="background: #2563eb; opacity: 0.684;"></div><div class="cell" title="Tue 20:00 - 3,907 calls" style="background: #2563eb; opacity: 0.673;"></div><div class="cell" title="Tue 21:00 - 3,850 calls" style="background: #2563eb; opacity: 0.664;"></div><div class="cell" title="Tue 22:00 - 3,339 calls" style="background: #2563eb; opacity: 0.586;"></div><div class="cell" title="Tue 23:00 - 3,096 calls" style="background: #2563eb; opacity: 0.550;"></div><div class="day">Wed</div><div class="cell" title="Wed 0:00 - 2,818 calls" style="background: #2563eb; opacity: 0.507;"></div><div class="cell" title="Wed 1:00 - 2,289 calls" style="background: #2563eb; opacity: 0.427;"></div><div class="cell" title="Wed 2:00 - 2,228 calls" style="background: #2563eb; opacity: 0.418;"></div><div class="cell" title="Wed 3:00 - 1,632 calls" style="background: #2563eb; opacity: 0.328;"></div><div class="cell" title="Wed 4:00 - 1,484 calls" style="background: #2563eb; opacity: 0.305;"></div><div class="cell" title="Wed 5:00 - 1,872 calls" style="background: #2563eb; opacity: 0.364;"></div><div class="cell" title="Wed 6:00 - 2,265 calls" style="background: #2563eb; opacity: 0.424;"></div><div class="cell" title="Wed 7:00 - 3,255 calls" style="background: #2563eb; opacity: 0.574;"></div><div class="cell" title="Wed 8:00 - 4,196 calls" style="background: #2563eb; opacity: 0.716;"></div><div class="cell" title="Wed 9:00 - 4,365 calls" style="background: #2563eb; opacity: 0.742;"></div><div class="cell" title="Wed 10:00 - 4,194 calls" style="background: #2563eb; opacity: 0.716;"></div><div class="cell" title="Wed 11:00 - 4,645 calls" style="background: #2563eb; opacity: 0.785;"></div><div class="cell" title="Wed 12:00 - 5,406 calls" style="background: #2563eb; opacity: 0.900;"></div><div class="cell" title="Wed 13:00 - 5,013 calls" style="background: #2563eb; opacity: 0.840;"></div><div class="cell" title="Wed 14:00 - 4,470 calls" style="background: #2563eb; opacity: 0.758;"></div><div class="cell" title="Wed 15:00 - 4,490 calls" style="background: #2563eb; opacity: 0.761;"></div><div class="cell" title="Wed 16:00 - 4,388 calls" style="background: #2563eb; opacity: 0.746;"></div><div class="cell" title="Wed 17:00 - 4,319 calls" style="background: #2563eb; opacity: 0.735;"></div><div class="cell" title="Wed 18:00 - 3,821 calls" style="background: #2563eb; opacity: 0.660;"></div><div class="cell" title="Wed 19:00 - 3,862 calls" style="background: #2563eb; opacity: 0.666;"></div><div class="cell" title="Wed 20:00 - 3,973 calls" style="background: #2563eb; opacity: 0.683;"></div><div class="cell" title="Wed 21:00 - 3,755 calls" style="background: #2563eb; opacity: 0.650;"></div><div class="cell" title="Wed 22:00 - 3,427 calls" style="background: #2563eb; opacity: 0.600;"></div><div class="cell" title="Wed 23:00 - 2,970 calls" style="background: #2563eb; opacity: 0.530;"></div><div class="day">Thu</div><div class="cell" title="Thu 0:00 - 2,505 calls" style="background: #2563eb; opacity: 0.460;"></div><div class="cell" title="Thu 1:00 - 2,210 calls" style="background: #2563eb; opacity: 0.415;"></div><div class="cell" title="Thu 2:00 - 1,827 calls" style="background: #2563eb; opacity: 0.357;"></div><div class="cell" title="Thu 3:00 - 1,517 calls" style="background: #2563eb; opacity: 0.310;"></div><div class="cell" title="Thu 4:00 - 1,497 calls" style="background: #2563eb; opacity: 0.307;"></div><div class="cell" title="Thu 5:00 - 1,998 calls" style="background: #2563eb; opacity: 0.383;"></div><div class="cell" title="Thu 6:00 - 2,395 calls" style="background: #2563eb; opacity: 0.443;"></div><div class="cell" title="Thu 7:00 - 3,043 calls" style="background: #2563eb; opacity: 0.542;"></div><div class="cell" title="Thu 8:00 - 4,029 calls" style="background: #2563eb; opacity: 0.691;"></div><div class="cell" title="Thu 9:00 - 4,237 calls" style="background: #2563eb; opacity: 0.723;"></div><div class="cell" title="Thu 10:00 - 4,161 calls" style="background: #2563eb; opacity: 0.711;"></div><div class="cell" title="Thu 11:00 - 4,650 calls" style="background: #2563eb; opacity: 0.785;"></div><div class="cell" title="Thu 12:00 - 5,198 calls" style="background: #2563eb; opacity: 0.868;"></div><div class="cell" title="Thu 13:00 - 5,011 calls" style="background: #2563eb; opacity: 0.840;"></div><div class="cell" title="Thu 14:00 - 4,504 calls" style="background: #2563eb; opacity: 0.763;"></div><div class="cell" title="Thu 15:00 - 4,516 calls" style="background: #2563eb; opacity: 0.765;"></div><div class="cell" title="Thu 16:00 - 4,669 calls" style="background: #2563eb; opacity: 0.788;"></div><div class="cell" title="Thu 17:00 - 3,834 calls" style="background: #2563eb; opacity: 0.662;"></div><div class="cell" title="Thu 18:00 - 3,897 calls" style="background: #2563eb; opacity: 0.671;"></div><div class="cell" title="Thu 19:00 - 3,754 calls" style="background: #2563eb; opacity: 0.649;"></div><div class="cell" title="Thu 20:00 - 3,724 calls" style="background: #2563eb; opacity: 0.645;"></div><div class="cell" title="Thu 21:00 - 3,701 calls" style="background: #2563eb; opacity: 0.641;"></div><div class="cell" title="Thu 22:00 - 3,442 calls" style="background: #2563eb; opacity: 0.602;"></div><div class="cell" title="Thu 23:00 - 3,029 calls" style="background: #2563eb; opacity: 0.539;"></div><div class="day">Fri</div><div class="cell" title="Fri 0:00 - 2,860 calls" style="background: #2563eb; opacity: 0.514;"></div><div class="cell" title="Fri 1:00 - 2,226 calls" style="background: #2563eb; opacity: 0.418;"></div><div class="cell" title="Fri 2:00 - 2,127 calls" style="background: #2563eb; opacity: 0.403;"></div><div class="cell" title="Fri 3:00 - 1,446 calls" style="background: #2563eb; opacity: 0.299;"></div><div class="cell" title="Fri 4:00 - 1,665 calls" style="background: #2563eb; opacity: 0.333;"></div><div class="cell" title="Fri 5:00 - 1,940 calls" style="background: #2563eb; opacity: 0.374;"></div><div class="cell" title="Fri 6:00 - 2,205 calls" style="background: #2563eb; opacity: 0.414;"></div><div class="cell" title="Fri 7:00 - 3,121 calls" style="background: #2563eb; opacity: 0.553;"></div><div class="cell" title="Fri 8:00 - 3,865 calls" style="background: #2563eb; opacity: 0.666;"></div><div class="cell" title="Fri 9:00 - 4,226 calls" style="background: #2563eb; opacity: 0.721;"></div><div class="cell" title="Fri 10:00 - 3,964 calls" style="background: #2563eb; opacity: 0.681;"></div><div class="cell" title="Fri 11:00 - 4,631 calls" style="background: #2563eb; opacity: 0.782;"></div><div class="cell" title="Fri 12:00 - 5,266 calls" style="background: #2563eb; opacity: 0.879;"></div><div class="cell" title="Fri 13:00 - 4,867 calls" style="background: #2563eb; opacity: 0.818;"></div><div class="cell" title="Fri 14:00 - 4,637 calls" style="background: #2563eb; opacity: 0.783;"></div><div class="cell" title="Fri 15:00 - 4,644 calls" style="background: #2563eb; opacity: 0.784;"></div><div class="cell" title="Fri 16:00 - 4,248 calls" style="background: #2563eb; opacity: 0.724;"></div><div class="cell" title="Fri 17:00 - 3,993 calls" style="background: #2563eb; opacity: 0.686;"></div><div class="cell" title="Fri 18:00 - 4,051 calls" style="background: #2563eb; opacity: 0.694;"></div><div class="cell" title="Fri 19:00 - 4,087 calls" style="background: #2563eb; opacity: 0.700;"></div><div class="cell" title="Fri 20:00 - 4,393 calls" style="background: #2563eb; opacity: 0.746;"></div><div class="cell" title="Fri 21:00 - 4,116 calls" style="background: #2563eb; opacity: 0.704;"></div><div class="cell" title="Fri 22:00 - 4,182 calls" style="background: #2563eb; opacity: 0.714;"></div><div class="cell" title="Fri 23:00 - 3,839 calls" style="background: #2563eb; opacity: 0.662;"></div><div class="day">Sat</div><div class="cell" title="Sat 0:00 - 3,439 calls" style="background: #2563eb; opacity: 0.602;"></div><div class="cell" title="Sat 1:00 - 3,151 calls" style="background: #2563eb; opacity: 0.558;"></div><div class="cell" title="Sat 2:00 - 2,836 calls" style="background: #2563eb; opacity: 0.510;"></div><div class="cell" title="Sat 3:00 - 1,808 calls" style="background: #2563eb; opacity: 0.354;"></div><div class="cell" title="Sat 4:00 - 1,664 calls" style="background: #2563eb; opacity: 0.332;"></div><div class="cell" title="Sat 5:00 - 1,708 calls" style="background: #2563eb; opacity: 0.339;"></div><div class="cell" title="Sat 6:00 - 1,668 calls" style="background: #2563eb; opacity: 0.333;"></div><div class="cell" title="Sat 7:00 - 2,236 calls" style="background: #2563eb; opacity: 0.419;"></div><div class="cell" title="Sat 8:00 - 2,745 calls" style="background: #2563eb; opacity: 0.496;"></div><div class="cell" title="Sat 9:00 - 3,002 calls" style="background: #2563eb; opacity: 0.535;"></div><div class="cell" title="Sat 10:00 - 3,168 calls" style="background: #2563eb; opacity: 0.561;"></div><div class="cell" title="Sat 11:00 - 3,612 calls" style="background: #2563eb; opacity: 0.628;"></div><div class="cell" title="Sat 12:00 - 4,058 calls" style="background: #2563eb; opacity: 0.696;"></div><div class="cell" title="Sat 13:00 - 3,907 calls" style="background: #2563eb; opacity: 0.673;"></div><div class="cell" title="Sat 14:00 - 3,692 calls" style="background: #2563eb; opacity: 0.640;"></div><div class="cell" title="Sat 15:00 - 3,690 calls" style="background: #2563eb; opacity: 0.640;"></div><div class="cell" title="Sat 16:00 - 3,720 calls" style="background: #2563eb; opacity: 0.644;"></div><div class="cell" title="Sat 17:00 - 3,601 calls" style="background: #2563eb; opacity: 0.626;"></div><div class="cell" title="Sat 18:00 - 3,385 calls" style="background: #2563eb; opacity: 0.593;"></div><div class="cell" title="Sat 19:00 - 3,434 calls" style="background: #2563eb; opacity: 0.601;"></div><div class="cell" title="Sat 20:00 - 3,936 calls" style="background: #2563eb; opacity: 0.677;"></div><div class="cell" title="Sat 21:00 - 3,835 calls" style="background: #2563eb; opacity: 0.662;"></div><div class="cell" title="Sat 22:00 - 3,682 calls" style="background: #2563eb; opacity: 0.638;"></div><div class="cell" title="Sat 23:00 - 3,808 calls" style="background: #2563eb; opacity: 0.658;"></div><div class="day">Sun</div><div class="cell" title="Sun 0:00 - 3,275 calls" style="background: #2563eb; opacity: 0.577;"></div><div class="cell" title="Sun 1:00 - 2,982 calls" style="background: #2563eb; opacity: 0.532;"></div><div class="cell" title="Sun 2:00 - 2,635 calls" style="background: #2563eb; opacity: 0.480;"></div><div class="cell" title="Sun 3:00 - 1,981 calls" style="background: #2563eb; opacity: 0.380;"></div><div class="cell" title="Sun 4:00 - 1,662 calls" style="background: #2563eb; opacity: 0.332;"></div><div class="cell" title="Sun 5:00 - 1,740 calls" style="background: #2563eb; opacity: 0.344;"></div><div class="cell" title="Sun 6:00 - 1,604 calls" style="background: #2563eb; opacity: 0.323;"></div><div class="cell" title="Sun 7:00 - 1,921 calls" style="background: #2563eb; opacity: 0.371;"></div><div class="cell" title="Sun 8:00 - 2,480 calls" style="background: #2563eb; opacity: 0.456;"></div><div class="cell" title="Sun 9:00 - 2,645 calls" style="background: #2563eb; opacity: 0.481;"></div><div class="cell" title="Sun 10:00 - 2,952 calls" style="background: #2563eb; opacity: 0.528;"></div><div class="cell" title="Sun 11:00 - 3,410 calls" style="background: #2563eb; opacity: 0.597;"></div><div class="cell" title="Sun 12:00 - 3,886 calls" style="background: #2563eb; opacity: 0.669;"></div><div class="cell" title="Sun 13:00 - 3,696 calls" style="background: #2563eb; opacity: 0.641;"></div><div class="cell" title="Sun 14:00 - 3,791 calls" style="background: #2563eb; opacity: 0.655;"></div><div class="cell" title="Sun 15:00 - 3,757 calls" style="background: #2563eb; opacity: 0.650;"></div><div class="cell" title="Sun 16:00 - 3,547 calls" style="background: #2563eb; opacity: 0.618;"></div><div class="cell" title="Sun 17:00 - 3,356 calls" style="background: #2563eb; opacity: 0.589;"></div><div class="cell" title="Sun 18:00 - 3,193 calls" style="background: #2563eb; opacity: 0.564;"></div><div class="cell" title="Sun 19:00 - 3,444 calls" style="background: #2563eb; opacity: 0.602;"></div><div class="cell" title="Sun 20:00 - 3,882 calls" style="background: #2563eb; opacity: 0.669;"></div><div class="cell" title="Sun 21:00 - 3,434 calls" style="background: #2563eb; opacity: 0.601;"></div><div class="cell" title="Sun 22:00 - 3,381 calls" style="background: #2563eb; opacity: 0.593;"></div><div class="cell" title="Sun 23:00 - 2,696 calls" style="background: #2563eb; opacity: 0.489;"></div></div>
+      </div>
+    
+      
+      <div class="chart-panel">
+        <div class="heatmap-title">Synthetic data</div>
+        <div class="heatmap"><div></div><div class="hour">0</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">6</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">12</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">18</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">23</div><div class="day">Mon</div><div class="cell" title="Mon 0:00 - 2,562 calls" style="background: #0f766e; opacity: 0.488;"></div><div class="cell" title="Mon 1:00 - 1,990 calls" style="background: #0f766e; opacity: 0.397;"></div><div class="cell" title="Mon 2:00 - 1,917 calls" style="background: #0f766e; opacity: 0.386;"></div><div class="cell" title="Mon 3:00 - 1,399 calls" style="background: #0f766e; opacity: 0.303;"></div><div class="cell" title="Mon 4:00 - 1,211 calls" style="background: #0f766e; opacity: 0.273;"></div><div class="cell" title="Mon 5:00 - 1,899 calls" style="background: #0f766e; opacity: 0.383;"></div><div class="cell" title="Mon 6:00 - 2,142 calls" style="background: #0f766e; opacity: 0.421;"></div><div class="cell" title="Mon 7:00 - 3,071 calls" style="background: #0f766e; opacity: 0.570;"></div><div class="cell" title="Mon 8:00 - 3,902 calls" style="background: #0f766e; opacity: 0.702;"></div><div class="cell" title="Mon 9:00 - 4,117 calls" style="background: #0f766e; opacity: 0.736;"></div><div class="cell" title="Mon 10:00 - 4,206 calls" style="background: #0f766e; opacity: 0.750;"></div><div class="cell" title="Mon 11:00 - 4,523 calls" style="background: #0f766e; opacity: 0.801;"></div><div class="cell" title="Mon 12:00 - 4,657 calls" style="background: #0f766e; opacity: 0.822;"></div><div class="cell" title="Mon 13:00 - 5,144 calls" style="background: #0f766e; opacity: 0.900;"></div><div class="cell" title="Mon 14:00 - 4,743 calls" style="background: #0f766e; opacity: 0.836;"></div><div class="cell" title="Mon 15:00 - 4,630 calls" style="background: #0f766e; opacity: 0.818;"></div><div class="cell" title="Mon 16:00 - 4,456 calls" style="background: #0f766e; opacity: 0.790;"></div><div class="cell" title="Mon 17:00 - 4,007 calls" style="background: #0f766e; opacity: 0.719;"></div><div class="cell" title="Mon 18:00 - 3,831 calls" style="background: #0f766e; opacity: 0.691;"></div><div class="cell" title="Mon 19:00 - 3,801 calls" style="background: #0f766e; opacity: 0.686;"></div><div class="cell" title="Mon 20:00 - 3,801 calls" style="background: #0f766e; opacity: 0.686;"></div><div class="cell" title="Mon 21:00 - 3,633 calls" style="background: #0f766e; opacity: 0.659;"></div><div class="cell" title="Mon 22:00 - 3,390 calls" style="background: #0f766e; opacity: 0.620;"></div><div class="cell" title="Mon 23:00 - 2,867 calls" style="background: #0f766e; opacity: 0.537;"></div><div class="day">Tue</div><div class="cell" title="Tue 0:00 - 2,472 calls" style="background: #0f766e; opacity: 0.474;"></div><div class="cell" title="Tue 1:00 - 1,997 calls" style="background: #0f766e; opacity: 0.398;"></div><div class="cell" title="Tue 2:00 - 1,848 calls" style="background: #0f766e; opacity: 0.375;"></div><div class="cell" title="Tue 3:00 - 1,339 calls" style="background: #0f766e; opacity: 0.293;"></div><div class="cell" title="Tue 4:00 - 1,314 calls" style="background: #0f766e; opacity: 0.289;"></div><div class="cell" title="Tue 5:00 - 1,640 calls" style="background: #0f766e; opacity: 0.341;"></div><div class="cell" title="Tue 6:00 - 2,102 calls" style="background: #0f766e; opacity: 0.415;"></div><div class="cell" title="Tue 7:00 - 3,202 calls" style="background: #0f766e; opacity: 0.590;"></div><div class="cell" title="Tue 8:00 - 4,140 calls" style="background: #0f766e; opacity: 0.740;"></div><div class="cell" title="Tue 9:00 - 4,170 calls" style="background: #0f766e; opacity: 0.745;"></div><div class="cell" title="Tue 10:00 - 4,182 calls" style="background: #0f766e; opacity: 0.747;"></div><div class="cell" title="Tue 11:00 - 4,565 calls" style="background: #0f766e; opacity: 0.808;"></div><div class="cell" title="Tue 12:00 - 4,945 calls" style="background: #0f766e; opacity: 0.868;"></div><div class="cell" title="Tue 13:00 - 4,804 calls" style="background: #0f766e; opacity: 0.846;"></div><div class="cell" title="Tue 14:00 - 4,472 calls" style="background: #0f766e; opacity: 0.793;"></div><div class="cell" title="Tue 15:00 - 4,574 calls" style="background: #0f766e; opacity: 0.809;"></div><div class="cell" title="Tue 16:00 - 4,181 calls" style="background: #0f766e; opacity: 0.746;"></div><div class="cell" title="Tue 17:00 - 4,190 calls" style="background: #0f766e; opacity: 0.748;"></div><div class="cell" title="Tue 18:00 - 3,736 calls" style="background: #0f766e; opacity: 0.676;"></div><div class="cell" title="Tue 19:00 - 3,852 calls" style="background: #0f766e; opacity: 0.694;"></div><div class="cell" title="Tue 20:00 - 3,886 calls" style="background: #0f766e; opacity: 0.699;"></div><div class="cell" title="Tue 21:00 - 3,458 calls" style="background: #0f766e; opacity: 0.631;"></div><div class="cell" title="Tue 22:00 - 3,044 calls" style="background: #0f766e; opacity: 0.565;"></div><div class="cell" title="Tue 23:00 - 2,860 calls" style="background: #0f766e; opacity: 0.536;"></div><div class="day">Wed</div><div class="cell" title="Wed 0:00 - 2,481 calls" style="background: #0f766e; opacity: 0.475;"></div><div class="cell" title="Wed 1:00 - 2,078 calls" style="background: #0f766e; opacity: 0.411;"></div><div class="cell" title="Wed 2:00 - 1,947 calls" style="background: #0f766e; opacity: 0.390;"></div><div class="cell" title="Wed 3:00 - 1,254 calls" style="background: #0f766e; opacity: 0.280;"></div><div class="cell" title="Wed 4:00 - 1,387 calls" style="background: #0f766e; opacity: 0.301;"></div><div class="cell" title="Wed 5:00 - 1,815 calls" style="background: #0f766e; opacity: 0.369;"></div><div class="cell" title="Wed 6:00 - 2,236 calls" style="background: #0f766e; opacity: 0.436;"></div><div class="cell" title="Wed 7:00 - 3,223 calls" style="background: #0f766e; opacity: 0.594;"></div><div class="cell" title="Wed 8:00 - 4,219 calls" style="background: #0f766e; opacity: 0.753;"></div><div class="cell" title="Wed 9:00 - 4,299 calls" style="background: #0f766e; opacity: 0.765;"></div><div class="cell" title="Wed 10:00 - 4,242 calls" style="background: #0f766e; opacity: 0.756;"></div><div class="cell" title="Wed 11:00 - 4,745 calls" style="background: #0f766e; opacity: 0.836;"></div><div class="cell" title="Wed 12:00 - 5,072 calls" style="background: #0f766e; opacity: 0.889;"></div><div class="cell" title="Wed 13:00 - 4,873 calls" style="background: #0f766e; opacity: 0.857;"></div><div class="cell" title="Wed 14:00 - 4,566 calls" style="background: #0f766e; opacity: 0.808;"></div><div class="cell" title="Wed 15:00 - 4,551 calls" style="background: #0f766e; opacity: 0.805;"></div><div class="cell" title="Wed 16:00 - 4,350 calls" style="background: #0f766e; opacity: 0.773;"></div><div class="cell" title="Wed 17:00 - 4,178 calls" style="background: #0f766e; opacity: 0.746;"></div><div class="cell" title="Wed 18:00 - 3,948 calls" style="background: #0f766e; opacity: 0.709;"></div><div class="cell" title="Wed 19:00 - 3,794 calls" style="background: #0f766e; opacity: 0.685;"></div><div class="cell" title="Wed 20:00 - 3,940 calls" style="background: #0f766e; opacity: 0.708;"></div><div class="cell" title="Wed 21:00 - 3,577 calls" style="background: #0f766e; opacity: 0.650;"></div><div class="cell" title="Wed 22:00 - 3,275 calls" style="background: #0f766e; opacity: 0.602;"></div><div class="cell" title="Wed 23:00 - 3,072 calls" style="background: #0f766e; opacity: 0.570;"></div><div class="day">Thu</div><div class="cell" title="Thu 0:00 - 2,513 calls" style="background: #0f766e; opacity: 0.481;"></div><div class="cell" title="Thu 1:00 - 2,081 calls" style="background: #0f766e; opacity: 0.412;"></div><div class="cell" title="Thu 2:00 - 1,761 calls" style="background: #0f766e; opacity: 0.361;"></div><div class="cell" title="Thu 3:00 - 1,334 calls" style="background: #0f766e; opacity: 0.293;"></div><div class="cell" title="Thu 4:00 - 1,222 calls" style="background: #0f766e; opacity: 0.275;"></div><div class="cell" title="Thu 5:00 - 1,651 calls" style="background: #0f766e; opacity: 0.343;"></div><div class="cell" title="Thu 6:00 - 2,150 calls" style="background: #0f766e; opacity: 0.423;"></div><div class="cell" title="Thu 7:00 - 3,074 calls" style="background: #0f766e; opacity: 0.570;"></div><div class="cell" title="Thu 8:00 - 4,031 calls" style="background: #0f766e; opacity: 0.723;"></div><div class="cell" title="Thu 9:00 - 4,179 calls" style="background: #0f766e; opacity: 0.746;"></div><div class="cell" title="Thu 10:00 - 4,212 calls" style="background: #0f766e; opacity: 0.751;"></div><div class="cell" title="Thu 11:00 - 4,479 calls" style="background: #0f766e; opacity: 0.794;"></div><div class="cell" title="Thu 12:00 - 5,065 calls" style="background: #0f766e; opacity: 0.887;"></div><div class="cell" title="Thu 13:00 - 4,865 calls" style="background: #0f766e; opacity: 0.856;"></div><div class="cell" title="Thu 14:00 - 4,602 calls" style="background: #0f766e; opacity: 0.814;"></div><div class="cell" title="Thu 15:00 - 4,451 calls" style="background: #0f766e; opacity: 0.790;"></div><div class="cell" title="Thu 16:00 - 4,287 calls" style="background: #0f766e; opacity: 0.763;"></div><div class="cell" title="Thu 17:00 - 4,185 calls" style="background: #0f766e; opacity: 0.747;"></div><div class="cell" title="Thu 18:00 - 3,906 calls" style="background: #0f766e; opacity: 0.703;"></div><div class="cell" title="Thu 19:00 - 3,663 calls" style="background: #0f766e; opacity: 0.664;"></div><div class="cell" title="Thu 20:00 - 3,782 calls" style="background: #0f766e; opacity: 0.683;"></div><div class="cell" title="Thu 21:00 - 3,604 calls" style="background: #0f766e; opacity: 0.655;"></div><div class="cell" title="Thu 22:00 - 3,361 calls" style="background: #0f766e; opacity: 0.616;"></div><div class="cell" title="Thu 23:00 - 2,905 calls" style="background: #0f766e; opacity: 0.543;"></div><div class="day">Fri</div><div class="cell" title="Fri 0:00 - 2,405 calls" style="background: #0f766e; opacity: 0.463;"></div><div class="cell" title="Fri 1:00 - 2,106 calls" style="background: #0f766e; opacity: 0.416;"></div><div class="cell" title="Fri 2:00 - 1,876 calls" style="background: #0f766e; opacity: 0.379;"></div><div class="cell" title="Fri 3:00 - 1,379 calls" style="background: #0f766e; opacity: 0.300;"></div><div class="cell" title="Fri 4:00 - 1,244 calls" style="background: #0f766e; opacity: 0.278;"></div><div class="cell" title="Fri 5:00 - 1,720 calls" style="background: #0f766e; opacity: 0.354;"></div><div class="cell" title="Fri 6:00 - 2,167 calls" style="background: #0f766e; opacity: 0.425;"></div><div class="cell" title="Fri 7:00 - 3,012 calls" style="background: #0f766e; opacity: 0.560;"></div><div class="cell" title="Fri 8:00 - 3,836 calls" style="background: #0f766e; opacity: 0.691;"></div><div class="cell" title="Fri 9:00 - 4,158 calls" style="background: #0f766e; opacity: 0.743;"></div><div class="cell" title="Fri 10:00 - 4,374 calls" style="background: #0f766e; opacity: 0.777;"></div><div class="cell" title="Fri 11:00 - 4,532 calls" style="background: #0f766e; opacity: 0.802;"></div><div class="cell" title="Fri 12:00 - 4,879 calls" style="background: #0f766e; opacity: 0.858;"></div><div class="cell" title="Fri 13:00 - 4,480 calls" style="background: #0f766e; opacity: 0.794;"></div><div class="cell" title="Fri 14:00 - 4,692 calls" style="background: #0f766e; opacity: 0.828;"></div><div class="cell" title="Fri 15:00 - 4,627 calls" style="background: #0f766e; opacity: 0.818;"></div><div class="cell" title="Fri 16:00 - 4,132 calls" style="background: #0f766e; opacity: 0.739;"></div><div class="cell" title="Fri 17:00 - 4,050 calls" style="background: #0f766e; opacity: 0.726;"></div><div class="cell" title="Fri 18:00 - 3,979 calls" style="background: #0f766e; opacity: 0.714;"></div><div class="cell" title="Fri 19:00 - 3,613 calls" style="background: #0f766e; opacity: 0.656;"></div><div class="cell" title="Fri 20:00 - 3,873 calls" style="background: #0f766e; opacity: 0.697;"></div><div class="cell" title="Fri 21:00 - 3,671 calls" style="background: #0f766e; opacity: 0.665;"></div><div class="cell" title="Fri 22:00 - 3,232 calls" style="background: #0f766e; opacity: 0.595;"></div><div class="cell" title="Fri 23:00 - 3,027 calls" style="background: #0f766e; opacity: 0.563;"></div><div class="day">Sat</div><div class="cell" title="Sat 0:00 - 2,504 calls" style="background: #0f766e; opacity: 0.479;"></div><div class="cell" title="Sat 1:00 - 2,148 calls" style="background: #0f766e; opacity: 0.422;"></div><div class="cell" title="Sat 2:00 - 2,007 calls" style="background: #0f766e; opacity: 0.400;"></div><div class="cell" title="Sat 3:00 - 1,313 calls" style="background: #0f766e; opacity: 0.289;"></div><div class="cell" title="Sat 4:00 - 1,261 calls" style="background: #0f766e; opacity: 0.281;"></div><div class="cell" title="Sat 5:00 - 1,787 calls" style="background: #0f766e; opacity: 0.365;"></div><div class="cell" title="Sat 6:00 - 2,042 calls" style="background: #0f766e; opacity: 0.406;"></div><div class="cell" title="Sat 7:00 - 3,056 calls" style="background: #0f766e; opacity: 0.567;"></div><div class="cell" title="Sat 8:00 - 3,920 calls" style="background: #0f766e; opacity: 0.705;"></div><div class="cell" title="Sat 9:00 - 4,392 calls" style="background: #0f766e; opacity: 0.780;"></div><div class="cell" title="Sat 10:00 - 4,019 calls" style="background: #0f766e; opacity: 0.721;"></div><div class="cell" title="Sat 11:00 - 4,668 calls" style="background: #0f766e; opacity: 0.824;"></div><div class="cell" title="Sat 12:00 - 5,101 calls" style="background: #0f766e; opacity: 0.893;"></div><div class="cell" title="Sat 13:00 - 4,622 calls" style="background: #0f766e; opacity: 0.817;"></div><div class="cell" title="Sat 14:00 - 4,660 calls" style="background: #0f766e; opacity: 0.823;"></div><div class="cell" title="Sat 15:00 - 4,485 calls" style="background: #0f766e; opacity: 0.795;"></div><div class="cell" title="Sat 16:00 - 4,362 calls" style="background: #0f766e; opacity: 0.775;"></div><div class="cell" title="Sat 17:00 - 4,062 calls" style="background: #0f766e; opacity: 0.728;"></div><div class="cell" title="Sat 18:00 - 3,926 calls" style="background: #0f766e; opacity: 0.706;"></div><div class="cell" title="Sat 19:00 - 3,898 calls" style="background: #0f766e; opacity: 0.701;"></div><div class="cell" title="Sat 20:00 - 3,762 calls" style="background: #0f766e; opacity: 0.680;"></div><div class="cell" title="Sat 21:00 - 3,647 calls" style="background: #0f766e; opacity: 0.661;"></div><div class="cell" title="Sat 22:00 - 3,177 calls" style="background: #0f766e; opacity: 0.586;"></div><div class="cell" title="Sat 23:00 - 2,994 calls" style="background: #0f766e; opacity: 0.557;"></div><div class="day">Sun</div><div class="cell" title="Sun 0:00 - 2,573 calls" style="background: #0f766e; opacity: 0.490;"></div><div class="cell" title="Sun 1:00 - 2,160 calls" style="background: #0f766e; opacity: 0.424;"></div><div class="cell" title="Sun 2:00 - 1,962 calls" style="background: #0f766e; opacity: 0.393;"></div><div class="cell" title="Sun 3:00 - 1,381 calls" style="background: #0f766e; opacity: 0.300;"></div><div class="cell" title="Sun 4:00 - 1,191 calls" style="background: #0f766e; opacity: 0.270;"></div><div class="cell" title="Sun 5:00 - 1,734 calls" style="background: #0f766e; opacity: 0.356;"></div><div class="cell" title="Sun 6:00 - 2,118 calls" style="background: #0f766e; opacity: 0.418;"></div><div class="cell" title="Sun 7:00 - 3,187 calls" style="background: #0f766e; opacity: 0.588;"></div><div class="cell" title="Sun 8:00 - 4,029 calls" style="background: #0f766e; opacity: 0.722;"></div><div class="cell" title="Sun 9:00 - 4,308 calls" style="background: #0f766e; opacity: 0.767;"></div><div class="cell" title="Sun 10:00 - 4,437 calls" style="background: #0f766e; opacity: 0.787;"></div><div class="cell" title="Sun 11:00 - 4,657 calls" style="background: #0f766e; opacity: 0.822;"></div><div class="cell" title="Sun 12:00 - 4,988 calls" style="background: #0f766e; opacity: 0.875;"></div><div class="cell" title="Sun 13:00 - 4,865 calls" style="background: #0f766e; opacity: 0.856;"></div><div class="cell" title="Sun 14:00 - 4,461 calls" style="background: #0f766e; opacity: 0.791;"></div><div class="cell" title="Sun 15:00 - 4,453 calls" style="background: #0f766e; opacity: 0.790;"></div><div class="cell" title="Sun 16:00 - 4,320 calls" style="background: #0f766e; opacity: 0.769;"></div><div class="cell" title="Sun 17:00 - 4,113 calls" style="background: #0f766e; opacity: 0.736;"></div><div class="cell" title="Sun 18:00 - 3,773 calls" style="background: #0f766e; opacity: 0.681;"></div><div class="cell" title="Sun 19:00 - 3,716 calls" style="background: #0f766e; opacity: 0.672;"></div><div class="cell" title="Sun 20:00 - 3,726 calls" style="background: #0f766e; opacity: 0.674;"></div><div class="cell" title="Sun 21:00 - 3,516 calls" style="background: #0f766e; opacity: 0.640;"></div><div class="cell" title="Sun 22:00 - 3,265 calls" style="background: #0f766e; opacity: 0.600;"></div><div class="cell" title="Sun 23:00 - 2,914 calls" style="background: #0f766e; opacity: 0.545;"></div></div>
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Key Pattern Comparisons</h2>
+    <div class="legend">
+      <span><span class="swatch" style="background: var(--real);"></span>Real</span>
+      <span><span class="swatch" style="background: var(--synthetic);"></span>Synthetic</span>
+    </div>
+    <div class="grid two">
+      
+      <div class="chart-panel">
+        <h3>Call Types</h3>
+        
+            <div class="bar-row">
+              <div class="bar-label">ASSAULTS, OTHER</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 30.3%;"></div>
+                <div class="bar synthetic" style="width: 30.1%;"></div>
+              </div>
+              <div class="bar-value">3.0% / 3.0%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">ASSIST OTHER AGENCY - CITY AGENCY</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 35.5%;"></div>
+                <div class="bar synthetic" style="width: 36.0%;"></div>
+              </div>
+              <div class="bar-value">3.5% / 3.6%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">ASSIST PUBLIC - OTHER (NON-SPECIFIED)</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 72.6%;"></div>
+                <div class="bar synthetic" style="width: 72.9%;"></div>
+              </div>
+              <div class="bar-value">7.2% / 7.2%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">CRISIS COMPLAINT - GENERAL</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 51.1%;"></div>
+                <div class="bar synthetic" style="width: 50.5%;"></div>
+              </div>
+              <div class="bar-value">5.0% / 5.0%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">DIRECTED PATROL ACTIVITY</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 26.3%;"></div>
+                <div class="bar synthetic" style="width: 26.4%;"></div>
+              </div>
+              <div class="bar-value">2.6% / 2.6%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">DISTURBANCE - OTHER</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 100.0%;"></div>
+                <div class="bar synthetic" style="width: 99.7%;"></div>
+              </div>
+              <div class="bar-value">9.9% / 9.8%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">PREMISE CHECKS - CRIME PREVENTION</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 25.3%;"></div>
+                <div class="bar synthetic" style="width: 25.2%;"></div>
+              </div>
+              <div class="bar-value">2.5% / 2.5%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">PROWLER - TRESPASS</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 37.3%;"></div>
+                <div class="bar synthetic" style="width: 37.2%;"></div>
+              </div>
+              <div class="bar-value">3.7% / 3.7%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">SUSPICIOUS CIRCUM. - SUSPICIOUS PERSON</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 87.9%;"></div>
+                <div class="bar synthetic" style="width: 87.6%;"></div>
+              </div>
+              <div class="bar-value">8.7% / 8.6%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">TRAFFIC - MOVING VIOLATION</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 33.3%;"></div>
+                <div class="bar synthetic" style="width: 33.2%;"></div>
+              </div>
+              <div class="bar-value">3.3% / 3.3%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">TRAFFIC - MV COLLISION INVESTIGATION</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 33.1%;"></div>
+                <div class="bar synthetic" style="width: 33.6%;"></div>
+              </div>
+              <div class="bar-value">3.3% / 3.3%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">TRAFFIC - PARKING VIOL (EXCEPT ABANDONED CAR)</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 37.1%;"></div>
+                <div class="bar synthetic" style="width: 37.4%;"></div>
+              </div>
+              <div class="bar-value">3.7% / 3.7%</div>
+            </div>
+            
+      </div>
+    
+      
+      <div class="chart-panel">
+        <h3>Priority Levels</h3>
+        
+            <div class="bar-row">
+              <div class="bar-label">1</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 53.3%;"></div>
+                <div class="bar synthetic" style="width: 26.1%;"></div>
+              </div>
+              <div class="bar-value">19.6% / 9.6%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">2</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 100.0%;"></div>
+                <div class="bar synthetic" style="width: 86.6%;"></div>
+              </div>
+              <div class="bar-value">36.8% / 31.9%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">3</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 56.7%;"></div>
+                <div class="bar synthetic" style="width: 69.3%;"></div>
+              </div>
+              <div class="bar-value">20.9% / 25.5%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">4</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 15.1%;"></div>
+                <div class="bar synthetic" style="width: 23.7%;"></div>
+              </div>
+              <div class="bar-value">5.6% / 8.7%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">5</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 12.1%;"></div>
+                <div class="bar synthetic" style="width: 19.4%;"></div>
+              </div>
+              <div class="bar-value">4.5% / 7.1%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">7</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 30.6%;"></div>
+                <div class="bar synthetic" style="width: 41.7%;"></div>
+              </div>
+              <div class="bar-value">11.3% / 15.3%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">9</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 3.7%;"></div>
+                <div class="bar synthetic" style="width: 4.8%;"></div>
+              </div>
+              <div class="bar-value">1.4% / 1.8%</div>
+            </div>
+            
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Geographic Pattern</h2>
+    <p class="subtitle">For executive review, the dashboard compares location patterns without displaying individual addresses.</p>
+    
+          <div class="heatmaps">
+            
+      <div class="chart-panel">
+        <div class="heatmap-title">Real coordinate pattern</div>
+        <div class="geo-grid"><div class="geo-cell" title="426,830 calls in this area" style="background: #2563eb; opacity: 0.900;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #2563eb; opacity: 0.080;"></div><div class="geo-cell" title="6,588 calls in this area" style="background: #2563eb; opacity: 0.093;"></div></div>
+      </div>
+    
+            
+      <div class="chart-panel">
+        <div class="heatmap-title">Synthetic coordinate pattern</div>
+        <div class="geo-grid"><div class="geo-cell" title="553,912 calls in this area" style="background: #0f766e; opacity: 0.900;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="8,833 calls in this area" style="background: #0f766e; opacity: 0.093;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="9,162 calls in this area" style="background: #0f766e; opacity: 0.094;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="0 calls in this area" style="background: #0f766e; opacity: 0.080;"></div><div class="geo-cell" title="174 calls in this area" style="background: #0f766e; opacity: 0.080;"></div></div>
+      </div>
+    
+          </div>
+        
+  </section>
+
+  <section class="section">
+    <h2>Response Time</h2>
+    
+      <div class="chart-panel">
+        <h3>Dispatch-To-Arrival Time</h3>
+        
+            <div class="bar-row">
+              <div class="bar-label">0-3 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 53.0%;"></div>
+                <div class="bar synthetic" style="width: 100.0%;"></div>
+              </div>
+              <div class="bar-value">19.0% / 35.8%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">3-6 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 54.6%;"></div>
+                <div class="bar synthetic" style="width: 42.8%;"></div>
+              </div>
+              <div class="bar-value">19.5% / 15.3%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">6-9 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 47.4%;"></div>
+                <div class="bar synthetic" style="width: 37.3%;"></div>
+              </div>
+              <div class="bar-value">17.0% / 13.4%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">9-11 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 35.3%;"></div>
+                <div class="bar synthetic" style="width: 28.2%;"></div>
+              </div>
+              <div class="bar-value">12.6% / 10.1%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">11-14 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 24.3%;"></div>
+                <div class="bar synthetic" style="width: 19.5%;"></div>
+              </div>
+              <div class="bar-value">8.7% / 7.0%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">14-17 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 15.8%;"></div>
+                <div class="bar synthetic" style="width: 12.7%;"></div>
+              </div>
+              <div class="bar-value">5.6% / 4.6%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">17-20 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 10.6%;"></div>
+                <div class="bar synthetic" style="width: 8.3%;"></div>
+              </div>
+              <div class="bar-value">3.8% / 3.0%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">20-23 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 7.3%;"></div>
+                <div class="bar synthetic" style="width: 5.8%;"></div>
+              </div>
+              <div class="bar-value">2.6% / 2.1%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">23-26 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 5.0%;"></div>
+                <div class="bar synthetic" style="width: 4.0%;"></div>
+              </div>
+              <div class="bar-value">1.8% / 1.4%</div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">26-28 min</div>
+              <div class="bar-track">
+                <div class="bar real" style="width: 26.2%;"></div>
+                <div class="bar synthetic" style="width: 20.8%;"></div>
+              </div>
+              <div class="bar-value">9.4% / 7.5%</div>
+            </div>
+            
+      </div>
+    
+  </section>
+
+  <section class="section">
+    <h2>Known Limits Of This Run</h2>
+    <ul class="limitations">
+      <li>This is a baseline local generator for MVP review, not a final privacy certification.</li><li>Synthetic event IDs are newly generated and do not represent real incidents.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Generated by SyntheticCAD. This dashboard is an executive summary; the researcher validation JSON contains the supporting metrics.
+  </footer>
+</main>
+</body>
+</html>

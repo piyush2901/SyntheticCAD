@@ -1,0 +1,300 @@
+{
+  "summary": {
+    "real_rows": 572296,
+    "synthetic_rows": 572081,
+    "real_columns": 23,
+    "synthetic_columns": 23
+  },
+  "categorical_fields": {
+    "call_type": {
+      "column": "Final Call Type",
+      "total_variation_distance": 0.01,
+      "largest_pct_point_gap": 0.1,
+      "largest_gap_category": "SUSPICIOUS CIRCUM. - SUSPICIOUS VEHICLE"
+    },
+    "disposition": {
+      "column": "CAD Event Clearance Description",
+      "total_variation_distance": 0.1054,
+      "largest_pct_point_gap": 5.77,
+      "largest_gap_category": "PHYSICAL ARREST MADE"
+    }
+  },
+  "numeric_fields": {
+    "event_id": {
+      "column": "CAD Event Number",
+      "ks_statistic": null,
+      "real_mean": 2025000188432.8506,
+      "synthetic_mean": null
+    },
+    "latitude": {
+      "column": "Dispatch Latitude",
+      "ks_statistic": 0.2787,
+      "real_mean": 46.8893,
+      "synthetic_mean": 46.8181
+    },
+    "longitude": {
+      "column": "Dispatch Longitude",
+      "ks_statistic": 0.4268,
+      "real_mean": -120.4744,
+      "synthetic_mean": -120.2749
+    },
+    "priority": {
+      "column": "Priority",
+      "ks_statistic": 0.1493,
+      "real_mean": 2.9182,
+      "synthetic_mean": 3.4378
+    }
+  },
+  "temporal_fields": {
+    "call_received_datetime": {
+      "column": "CAD Event Original Time Queued",
+      "real_parseable": 572296,
+      "synthetic_parseable": 572081,
+      "real_min": "2025-01-01 00:00:01",
+      "real_max": "2025-12-31 23:59:58",
+      "synthetic_min": "2025-01-01 00:01:28",
+      "synthetic_max": "2025-12-31 23:57:43"
+    },
+    "dispatch_time": {
+      "column": "Call Sign Dispatch Time",
+      "real_parseable": 572296,
+      "synthetic_parseable": 572081,
+      "real_min": "2025-01-01 00:00:01",
+      "real_max": "2026-01-01 20:22:51",
+      "synthetic_min": "2025-01-01 00:05:26",
+      "synthetic_max": "2026-01-01 17:20:12"
+    },
+    "arrival_time": {
+      "column": "Call Sign at Scene Time",
+      "real_parseable": 448844,
+      "synthetic_parseable": 572081,
+      "real_min": "2025-01-01 00:00:01",
+      "real_max": "2026-01-01 20:36:52",
+      "synthetic_min": "2025-01-01 00:12:15",
+      "synthetic_max": "2026-01-01 17:21:15"
+    },
+    "clearance_time": {
+      "column": "Call Sign In-Service Time",
+      "real_parseable": 572294,
+      "synthetic_parseable": 572081,
+      "real_min": "2025-01-01 00:02:36",
+      "real_max": "2026-01-02 04:22:35",
+      "synthetic_min": "2025-01-01 00:24:23",
+      "synthetic_max": "2026-01-01 18:23:20"
+    }
+  },
+  "duration_fields": {
+    "dispatch_to_arrival_minutes": {
+      "real_count": 448841,
+      "synthetic_count": 572081,
+      "ks_statistic": 0.166,
+      "real_median": 2.95,
+      "synthetic_median": 2.97
+    },
+    "arrival_to_clearance_minutes": {
+      "real_count": 448795,
+      "synthetic_count": 572081,
+      "ks_statistic": 0.0636,
+      "real_median": 33.17,
+      "synthetic_median": 33.8
+    },
+    "dispatch_to_clearance_minutes": {
+      "real_count": 572233,
+      "synthetic_count": 572079,
+      "ks_statistic": 0.1132,
+      "real_median": 30.33,
+      "synthetic_median": 42.7
+    }
+  },
+  "call_volume": {
+    "day_of_week_hour_mean_abs_pct_point_gap": 0.06,
+    "available": true
+  },
+  "event_unit_structure": {
+    "available": true,
+    "real_event_count": 339080,
+    "synthetic_event_count": 339080,
+    "real_rows_per_event_mean": 1.69,
+    "synthetic_rows_per_event_mean": 1.69,
+    "rows_per_event_ks_statistic": 0.0003
+  },
+  "correlation_preservation": {
+    "available": true,
+    "numeric_features": [
+      "latitude",
+      "longitude",
+      "priority",
+      "dispatch_to_arrival_minutes",
+      "arrival_to_clearance_minutes",
+      "dispatch_to_clearance_minutes"
+    ],
+    "mean_absolute_correlation_gap": 0.1245,
+    "same_direction_rate": 0.5333,
+    "pairs": [
+      {
+        "left": "latitude",
+        "right": "longitude",
+        "real_correlation": -0.9999,
+        "synthetic_correlation": -0.003,
+        "absolute_gap": 0.9969,
+        "same_direction": true
+      },
+      {
+        "left": "latitude",
+        "right": "priority",
+        "real_correlation": -0.139,
+        "synthetic_correlation": -0.0025,
+        "absolute_gap": 0.1365,
+        "same_direction": true
+      },
+      {
+        "left": "latitude",
+        "right": "dispatch_to_arrival_minutes",
+        "real_correlation": 0.0118,
+        "synthetic_correlation": 0.0009,
+        "absolute_gap": 0.0109,
+        "same_direction": true
+      },
+      {
+        "left": "latitude",
+        "right": "arrival_to_clearance_minutes",
+        "real_correlation": -0.0719,
+        "synthetic_correlation": 0.0001,
+        "absolute_gap": 0.072,
+        "same_direction": false
+      },
+      {
+        "left": "latitude",
+        "right": "dispatch_to_clearance_minutes",
+        "real_correlation": -0.0713,
+        "synthetic_correlation": 0.0002,
+        "absolute_gap": 0.0715,
+        "same_direction": false
+      },
+      {
+        "left": "longitude",
+        "right": "priority",
+        "real_correlation": 0.1366,
+        "synthetic_correlation": -0.003,
+        "absolute_gap": 0.1396,
+        "same_direction": false
+      },
+      {
+        "left": "longitude",
+        "right": "dispatch_to_arrival_minutes",
+        "real_correlation": -0.0115,
+        "synthetic_correlation": -0.0006,
+        "absolute_gap": 0.011,
+        "same_direction": true
+      },
+      {
+        "left": "longitude",
+        "right": "arrival_to_clearance_minutes",
+        "real_correlation": 0.0708,
+        "synthetic_correlation": -0.0016,
+        "absolute_gap": 0.0724,
+        "same_direction": false
+      },
+      {
+        "left": "longitude",
+        "right": "dispatch_to_clearance_minutes",
+        "real_correlation": 0.0703,
+        "synthetic_correlation": -0.0016,
+        "absolute_gap": 0.0719,
+        "same_direction": false
+      },
+      {
+        "left": "priority",
+        "right": "dispatch_to_arrival_minutes",
+        "real_correlation": -0.159,
+        "synthetic_correlation": 0.0004,
+        "absolute_gap": 0.1594,
+        "same_direction": false
+      },
+      {
+        "left": "priority",
+        "right": "arrival_to_clearance_minutes",
+        "real_correlation": 0.0195,
+        "synthetic_correlation": 0.0001,
+        "absolute_gap": 0.0194,
+        "same_direction": true
+      },
+      {
+        "left": "priority",
+        "right": "dispatch_to_clearance_minutes",
+        "real_correlation": 0.0348,
+        "synthetic_correlation": 0.0002,
+        "absolute_gap": 0.0346,
+        "same_direction": true
+      },
+      {
+        "left": "dispatch_to_arrival_minutes",
+        "right": "arrival_to_clearance_minutes",
+        "real_correlation": 0.0363,
+        "synthetic_correlation": -0.0009,
+        "absolute_gap": 0.0372,
+        "same_direction": false
+      },
+      {
+        "left": "dispatch_to_arrival_minutes",
+        "right": "dispatch_to_clearance_minutes",
+        "real_correlation": 0.215,
+        "synthetic_correlation": 0.1818,
+        "absolute_gap": 0.0332,
+        "same_direction": true
+      },
+      {
+        "left": "arrival_to_clearance_minutes",
+        "right": "dispatch_to_clearance_minutes",
+        "real_correlation": 0.9836,
+        "synthetic_correlation": 0.9831,
+        "absolute_gap": 0.0005,
+        "same_direction": true
+      }
+    ]
+  },
+  "methodology": {
+    "library_used": "SyntheticCAD dependency-light baseline generator using pandas and numpy.",
+    "method_summary": "The baseline generator learns mapped field distributions from the local CSV, creates new event identifiers, samples categorical patterns, preserves call-time patterns by day and hour, regenerates timestamps when unit-level timing fields are available, and avoids copying mapped street-level location text.",
+    "offline_processing": true
+  },
+  "privacy_statement": "The exported synthetic rows are newly generated records and do not correspond to real individuals or real incidents. This baseline report does not certify resistance to all re-identification or linkage attacks.",
+  "data_limitations": [],
+  "methodology_note": "This report was produced by the dependency-light baseline generator. It is suitable for early engineering review, not final privacy certification.",
+  "generation_process": {
+    "plain_language": "Read 572,296 real rows from Call_Data_20260619.csv, used the approved field mapping, and generated 572,081 synthetic rows locally.",
+    "source_file_name": "Call_Data_20260619.csv",
+    "source_rows_used": 572296,
+    "source_row_limit": null,
+    "source_columns_found": 47,
+    "mapped_columns_used": 23,
+    "mapped_column_names": [
+      "CAD Event Number",
+      "CAD Event Original Time Queued",
+      "Dispatch Neighborhood",
+      "Dispatch Latitude",
+      "Dispatch Longitude",
+      "Final Call Type",
+      "Priority",
+      "CAD Event Clearance Description",
+      "Call Sign Dispatch ID",
+      "Call Sign Dispatch Time",
+      "Call Sign at Scene Time",
+      "Call Sign In-Service Time",
+      "Call Type",
+      "Initial Call Type",
+      "Dispatch Precinct",
+      "Dispatch Sector",
+      "Dispatch Beat",
+      "Dispatch Reporting Area",
+      "CAD Event Response Category",
+      "Call Type Indicator",
+      "Call Type Received Classification",
+      "Count Of Officers",
+      "Event Group"
+    ],
+    "requested_synthetic_events": null,
+    "synthetic_rows_created": 572081,
+    "synthetic_generation_method": "Dependency-light baseline generator: sample mapped categorical distributions, preserve call-time patterns, create new event IDs, and replace mapped street-level location text with synthetic labels."
+  }
+}
