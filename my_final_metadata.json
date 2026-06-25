@@ -1,0 +1,160 @@
+{
+    "tables": {
+        "call-data-06-2026": {
+            "columns": {
+                "CAD Event Number": {
+                    "sdtype": "numerical"
+                },
+                "CAD Event Clearance Description": {
+                    "sdtype": "categorical"
+                },
+                "Call Type": {
+                    "sdtype": "categorical"
+                },
+                "Priority": {
+                    "sdtype": "categorical"
+                },
+                "Initial Call Type": {
+                    "sdtype": "categorical"
+                },
+                "Final Call Type": {
+                    "sdtype": "categorical"
+                },
+                "CAD Event Original Time Queued": {
+                    "datetime_format": null,
+                    "sdtype": "datetime"
+                },
+                "CAD Event Arrived Time": {
+                    "datetime_format": null,
+                    "sdtype": "datetime"
+                },
+                "Dispatch Precinct": {
+                    "sdtype": "categorical"
+                },
+                "Dispatch Sector": {
+                    "sdtype": "categorical"
+                },
+                "Dispatch Beat": {
+                    "sdtype": "categorical"
+                },
+                "Dispatch Longitude": {
+                    "pii": true,
+                    "sdtype": "longitude"
+                },
+                "Dispatch Latitude": {
+                    "pii": true,
+                    "sdtype": "latitude"
+                },
+                "Dispatch Reporting Area": {
+                    "sdtype": "categorical"
+                },
+                "CAD Event Response Category": {
+                    "sdtype": "categorical"
+                },
+                "Call Sign Dispatch ID": {
+                    "sdtype": "id"
+                },
+                "Call Sign Dispatch Time": {
+                    "datetime_format": null,
+                    "sdtype": "datetime"
+                },
+                "First CARE Call Sign At Scene Time": {
+                    "sdtype": "categorical"
+                },
+                "First CARE Call Sign Dispatch Time": {
+                    "sdtype": "categorical"
+                },
+                "First Co-Response Call Sign At Scene Time": {
+                    "sdtype": "categorical"
+                },
+                "First Co-Response Call Sign Dispatch Time": {
+                    "datetime_format": null,
+                    "sdtype": "datetime"
+                },
+                "First SPD Call Sign at Scene Time": {
+                    "datetime_format": null,
+                    "sdtype": "datetime"
+                },
+                "First SPD Call Sign Dispatch Time": {
+                    "datetime_format": null,
+                    "sdtype": "datetime"
+                },
+                "Last CARE Call Sign In-Service Time": {
+                    "sdtype": "categorical"
+                },
+                "Last Co-Response Call Sign In-Service Time": {
+                    "sdtype": "categorical"
+                },
+                "Last SPD Call Sign In-Service Time": {
+                    "sdtype": "categorical"
+                },
+                "CARE Call Sign Total Service Time (s)": {
+                    "sdtype": "numerical"
+                },
+                "Co-Response Call Sign Total Service Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "SPD Call Sign Total Service Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "Call Sign Total Service Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "First CARE Call Sign Dispatch Delay Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "First CARE Call Sign Response Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "First Co-Response Call Sign Dispatch Delay Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "First Co-Response Call Sign Response Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "First SPD Call Sign Dispatch Delay Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "First SPD Call Sign Response Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "Call Sign Dispatch Delay Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "Call Sign Response Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "Call Sign at Scene Time": {
+                    "sdtype": "categorical"
+                },
+                "CAD Event First Response Time (s)": {
+                    "sdtype": "categorical"
+                },
+                "Call Sign In-Service Time": {
+                    "sdtype": "categorical"
+                },
+                "Call Type Indicator": {
+                    "sdtype": "categorical"
+                },
+                "Dispatch Neighborhood": {
+                    "sdtype": "categorical"
+                },
+                "Call Type Received Classification": {
+                    "sdtype": "categorical"
+                },
+                "Dispatch Address": {
+                    "sdtype": "categorical"
+                },
+                "Count Of Officers": {
+                    "sdtype": "categorical"
+                },
+                "Event Group": {
+                    "sdtype": "categorical"
+                }
+            },
+            "primary_key": "Call Sign Dispatch ID"
+        }
+    },
+    "relationships": [],
+    "METADATA_SPEC_VERSION": "V1"
+}
