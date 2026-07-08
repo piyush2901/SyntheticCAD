@@ -9,14 +9,18 @@ This repository currently contains the core data pipeline:
 
 - CSV profiling and field-mapping guidance
 - Event/unit grain diagnostics
-- Baseline synthetic CAD generation
+- SDV-based synthetic CAD generation
+- Fast empirical pattern-matching synthesis for large local datasets
+- Baseline fallback for engineering smoke tests
 - Executive validation dashboard
 - Researcher-oriented validation JSON
 - Synthetic CSV export with disclaimer language
 
-The current implementation is a first engineering spine. It uses `pandas` and
-`numpy` so the workflow is easy to run locally while the product direction is
-still being refined.
+The current implementation uses `pandas`, `numpy`, and SDV. SDV remains the
+primary library-backed synthesis path because it supports multi-table relational
+synthesis for event/unit CAD structures. The repo also includes a faster
+`pattern` method for large prototype runs where the immediate goal is matching
+operational statistics.
 
 ## Repository Layout
 
@@ -75,16 +79,30 @@ Profile the full file:
 python -m syntheticcad.cli profile datasets\Call_Data_20260619.csv --out-dir outputs\seattle_2025_profile
 ```
 
-Generate the synthetic dataset using the checked-in Seattle mapping:
+Generate the synthetic dataset using the checked-in Seattle mapping and the fast
+pattern-matching method:
 
 ```powershell
-python -m syntheticcad.cli synthesize datasets\Call_Data_20260619.csv --mapping configs\mappings\seattle_2025_mvp.json --out-dir outputs\seattle_2025_full_run
+python -m syntheticcad.cli synthesize datasets\Call_Data_20260619.csv --mapping configs\mappings\seattle_2025_mvp.json --out-dir outputs\seattle_pattern_full_run --method pattern
+```
+
+The `synthesize` command uses SDV by default. The `pattern` method is faster and
+usually matches the visible operational statistics more closely because it uses
+event/unit templates, new IDs, timestamp randomization, paired coordinate jitter,
+and address-like location replacement. It is useful for full-file MVP demos, but
+it should be documented separately from SDV because it is not a formal privacy
+model.
+
+For fast smoke tests with the simplest dependency-light generator, run:
+
+```powershell
+python -m syntheticcad.cli synthesize datasets\Call_Data_20260619.csv --mapping configs\mappings\seattle_2025_mvp.json --out-dir outputs\baseline_run --method baseline
 ```
 
 Open the executive dashboard:
 
 ```text
-outputs/seattle_2025_full_run/executive_dashboard.html
+outputs/seattle_pattern_full_run/executive_dashboard.html
 ```
 
 Generated outputs include:
@@ -94,12 +112,49 @@ Generated outputs include:
 - `executive_dashboard.html`
 - `disclaimer.txt`
 
+## Public Demo Dashboard
+
+This repository includes a static GitHub Pages demo in `docs/index.html`. It is
+generated from the public Seattle sample workflow and is intended only as a
+shareable visual demonstration of the validation dashboard.
+
+To publish it from GitHub:
+
+1. Open the repository on GitHub.
+2. Go to **Settings** > **Pages**.
+3. Set **Source** to **Deploy from a branch**.
+4. Select the `main` branch and the `/docs` folder.
+5. Save the settings.
+
+Do not place raw datasets, closed agency exports, or large synthetic CSV files in
+`docs/`. The live demo should contain only static, public-safe artifacts.
+
+## Run The Local Windows Prototype
+
+Start the local browser app from PowerShell:
+
+```powershell
+python -m syntheticcad.web_app --host 127.0.0.1 --port 8765
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765/
+```
+
+The prototype runs entirely on the local machine. It accepts a CSV file path,
+mapping JSON path, synthesis method, row limit, seed, and output folder. Use
+`pattern` for the fastest full-file MVP run, `sdv` for library-backed synthesis
+checks, and `baseline` for the simplest smoke tests.
+
 ## Current Boundaries
 
-This is not yet a final privacy certification workflow. The baseline generator
-avoids direct copying of event IDs, unit IDs, and address strings, but the final
-product should use a stronger synthetic data methodology and add privacy risk
-tests before any real agency data is shared.
+This is not yet a final privacy certification workflow. SDV is the strongest
+library-backed path for the PRD, the `pattern` method is the fastest current
+full-file demo path, and the baseline generator remains available for
+engineering smoke tests. The final product should still add privacy risk tests
+before any real agency data is shared.
 
 The Seattle mapping intentionally uses `Dispatch Neighborhood` instead of
 `Dispatch Address` as the location field. Address-level fields should generally

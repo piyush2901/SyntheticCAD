@@ -1,0 +1,1611 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SyntheticCAD Executive Validation Dashboard</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5d6875;
+      --line: #d7dde5;
+      --soft: #f5f7fa;
+      --panel: #ffffff;
+      --blue: #2563eb;
+      --green: #0f766e;
+      --amber: #b45309;
+      --red: #b91c1c;
+      --real: #2563eb;
+      --synthetic: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: #eef2f6;
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+    header {
+      padding: 28px 0 20px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 22px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 10px; }
+    .subtitle {
+      color: var(--muted);
+      max-width: 920px;
+      font-size: 16px;
+    }
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+    .metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--soft);
+      min-height: 112px;
+    }
+    .metric .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .metric .value {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      overflow-wrap: anywhere;
+    }
+    .metric .note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--green);
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .badge.warn { background: var(--amber); }
+    .badge.stop { background: var(--red); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcfe;
+    }
+    .step-number {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .chart-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+    }
+    .legend {
+      display: flex;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 220px) minmax(0, 1fr) 72px;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .bar-label {
+      overflow-wrap: anywhere;
+      color: var(--ink);
+      font-weight: 600;
+    }
+    .compare-bars {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+    .mini-row {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr) 48px;
+      gap: 8px;
+      align-items: center;
+    }
+    .series-name {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .series-name.real { color: var(--real); }
+    .series-name.synthetic { color: var(--synthetic); }
+    .compare-track {
+      height: 12px;
+      background: #edf1f5;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .compare-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+    .compare-fill.real { background: var(--real); opacity: .86; }
+    .compare-fill.synthetic { background: var(--synthetic); opacity: .86; }
+    .mini-value {
+      color: var(--muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+    }
+    .bar-value {
+      color: var(--muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+    }
+    .gap-value {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 26px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #42505f;
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      padding: 4px 7px;
+    }
+    .heatmaps {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .heatmap-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .heatmap {
+      display: grid;
+      grid-template-columns: 34px repeat(24, minmax(10px, 1fr));
+      gap: 2px;
+      align-items: center;
+    }
+    .geo-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(12px, 1fr));
+      gap: 3px;
+      align-items: center;
+    }
+    .geo-cell {
+      aspect-ratio: 1 / 1;
+      min-height: 13px;
+      border-radius: 3px;
+      background: #eef2f6;
+    }
+    .curve-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+      margin-top: 14px;
+    }
+    .curve-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-top: 8px;
+    }
+    .stat-note {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    .heatmap .hour, .heatmap .day {
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+    }
+    .heatmap .day { text-align: right; padding-right: 4px; }
+    .cell {
+      aspect-ratio: 1 / 1;
+      min-height: 10px;
+      border-radius: 2px;
+      background: #eef2f6;
+    }
+    .callout {
+      border-left: 4px solid var(--blue);
+      background: #f7faff;
+      padding: 12px 14px;
+      border-radius: 6px;
+      color: var(--ink);
+    }
+    .limitations {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .limitations li { margin: 7px 0; }
+    footer {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 18px 0 8px;
+    }
+    @media (max-width: 900px) {
+      main { padding: 18px; }
+      .metrics, .two, .steps, .heatmaps {
+        grid-template-columns: 1fr;
+      }
+      .bar-row {
+        grid-template-columns: 1fr;
+      }
+      .mini-row {
+        grid-template-columns: 62px minmax(0, 1fr) 44px;
+      }
+      .heatmap {
+        grid-template-columns: 30px repeat(24, minmax(7px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>SyntheticCAD Executive Validation Dashboard</h1>
+    <p class="subtitle">This run used 572,296 real rows to create 571,049 synthetic rows. The synthetic data produced a very close match to the original call-volume pattern. Call type mix differed by at most 0.10 percentage points for any single category.</p>
+  </header>
+
+  <section class="section">
+    <h2>Run Summary</h2>
+    <div class="grid metrics">
+      
+      <div class="metric">
+        <div class="label">Real rows used</div>
+        <div class="value">572,296</div>
+        <div class="note">All loaded rows were used for this run.</div>
+      </div>
+    
+      
+      <div class="metric">
+        <div class="label">Synthetic rows created</div>
+        <div class="value">571,049</div>
+        <div class="note">Synthetic size followed the configured generation settings.</div>
+      </div>
+    
+      
+      <div class="metric">
+        <div class="label">Mapped fields used</div>
+        <div class="value">23 of 47 source fields</div>
+        <div class="note">Only mapped, approved fields are loaded, compared, and exported.</div>
+      </div>
+    
+      
+      <div class="metric">
+        <div class="label">Call pattern match</div>
+        <div class="value">Very close</div>
+        <div class="note">Average day/hour gap: 0.02 percentage points.</div>
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>What The Tool Did</h2>
+    <div class="callout">
+      SyntheticCAD read the source file locally, learned high-level patterns from the mapped fields, generated new records with new event identifiers, and wrote an export package containing the synthetic CSV, validation report, dashboard, and required disclaimer.
+    </div>
+    <div class="steps">
+      
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Read CSV</h3>
+        <p>Loaded 572,296 real rows for this run.</p>
+      </div>
+    
+      
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Mapped fields</h3>
+        <p>Mapped event ID, call time, call type, priority, location.</p>
+      </div>
+    
+      
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Generated data</h3>
+        <p>Created 571,049 synthetic rows with new event IDs.</p>
+      </div>
+    
+      
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3>Checked patterns</h3>
+        <p>Compared call timing, call types, priority, geography, and event structure where available.</p>
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Plain-Language Findings</h2>
+    <p><span class="badge">Call volume: Very close</span><span class="badge">Call types: max gap 0.10 pts</span><span class="badge">Rows per event: 1.69 real / 1.68 synthetic</span></p>
+    <p>The synthetic output is suitable for an early executive review of event-level call patterns. It preserves the broad shape of when calls occur and the mix of major call categories and priorities.</p>
+  </section>
+
+  <section class="section">
+    <h2>Pattern Match Snapshot</h2>
+    <p class="subtitle">These are simple match indicators for the most important operational patterns. Smaller gaps mean the synthetic data is closer to the original.</p>
+    <div class="grid metrics">
+      <div class="metric">
+        <div class="label">Call timing gap</div>
+        <div class="value">0.02 pts</div>
+        <div class="note">Average difference across day/hour call-volume cells.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Call type gap</div>
+        <div class="value">0.10 pts</div>
+        <div class="note">Largest difference for any call type category.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Disposition gap</div>
+        <div class="value">0.17 pts</div>
+        <div class="note">Largest difference for any clearance/disposition category.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Priority match</div>
+        <div class="value">0.0012</div>
+        <div class="note">Distribution distance. Lower means closer.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Response-time match</div>
+        <div class="value">0.0023</div>
+        <div class="note">Dispatch-to-arrival distribution distance.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Rows per event</div>
+        <div class="value">0.0015</div>
+        <div class="note">Checks whether multi-unit event shape stayed similar.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Relationship gap</div>
+        <div class="value">0.0028</div>
+        <div class="note">Average gap across numeric relationships tested.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Relationship direction</div>
+        <div class="value">100%</div>
+        <div class="note">Share of tested relationships with the same direction.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Operational Analytics</h2>
+    <p class="subtitle">These views answer practical questions about frequency, rare categories, and whether the synthetic data keeps the same operational shape.</p>
+    <div class="grid metrics">
+      <div class="metric">
+        <div class="label">Call type categories</div>
+        <div class="value">352 / 347</div>
+        <div class="note">Real / synthetic distinct non-empty values.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Most frequent call type</div>
+        <div class="value">DISTURBANCE - OTHER</div>
+        <div class="note">Real 56,492 rows (9.9%); synthetic 56,287 rows (9.9%).</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Smallest non-zero call type frequency</div>
+        <div class="value">1 / 1</div>
+        <div class="note">Real / synthetic minimum category count.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Area categories</div>
+        <div class="value">60 / 60</div>
+        <div class="note">Real / synthetic distinct non-empty values.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Most frequent area</div>
+        <div class="value">CAPITOL HILL</div>
+        <div class="note">Real 42,465 rows (7.4%); synthetic 41,910 rows (7.3%).</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">90th percentile response</div>
+        <div class="value">18.07 min / 18.03 min</div>
+        <div class="note">Real / synthetic dispatch-to-arrival time for slower calls.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Events compared</div>
+        <div class="value">339,080 / 339,080</div>
+        <div class="note">Real / synthetic unique event counts.</div>
+      </div>
+    </div><div class="grid two">
+      <div class="chart-panel">
+        <h3>Call Type Frequency Spread</h3>
+        <p class="stat-note">This shows how many categories are rare or common. For example, "1 row" means categories that appeared once.</p>
+        
+            <div class="bar-row">
+              <div class="bar-label">1 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 10.5%;"></div></div>
+                  <div class="mini-value">9</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 10.5%;"></div></div>
+                  <div class="mini-value">9</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">2-5 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 31.4%;"></div></div>
+                  <div class="mini-value">27</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 34.9%;"></div></div>
+                  <div class="mini-value">30</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">3</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">6-20 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 69.8%;"></div></div>
+                  <div class="mini-value">60</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 55.8%;"></div></div>
+                  <div class="mini-value">48</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">12</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">21-100 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 89.5%;"></div></div>
+                  <div class="mini-value">77</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 95.3%;"></div></div>
+                  <div class="mini-value">82</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">5</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">101-500 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">86</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 98.8%;"></div></div>
+                  <div class="mini-value">85</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">1</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">501-1k rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 27.9%;"></div></div>
+                  <div class="mini-value">24</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 27.9%;"></div></div>
+                  <div class="mini-value">24</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">1k-5k rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 50.0%;"></div></div>
+                  <div class="mini-value">43</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 50.0%;"></div></div>
+                  <div class="mini-value">43</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">5k+ rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 30.2%;"></div></div>
+                  <div class="mini-value">26</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 30.2%;"></div></div>
+                  <div class="mini-value">26</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+      </div>
+    
+      <div class="chart-panel">
+        <h3>Dispatch Neighborhood Frequency Spread</h3>
+        <p class="stat-note">This shows how many categories are rare or common. For example, "1 row" means categories that appeared once.</p>
+        
+            <div class="bar-row">
+              <div class="bar-label">1 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">2-5 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">6-20 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">21-100 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 0.0%;"></div></div>
+                  <div class="mini-value">0</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">101-500 rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 5.3%;"></div></div>
+                  <div class="mini-value">2</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 5.3%;"></div></div>
+                  <div class="mini-value">2</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">501-1k rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 2.6%;"></div></div>
+                  <div class="mini-value">1</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 2.6%;"></div></div>
+                  <div class="mini-value">1</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">1k-5k rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 50.0%;"></div></div>
+                  <div class="mini-value">19</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 50.0%;"></div></div>
+                  <div class="mini-value">19</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">5k+ rows</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">38</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">38</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0</span></div>
+            </div>
+            
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Call Volume By Day And Hour</h2>
+    <p class="subtitle">Darker cells mean more calls occurred in that day/hour window. The two grids should have a similar shape, even when exact counts differ.</p>
+    <div class="heatmaps">
+      
+      <div class="chart-panel">
+        <div class="heatmap-title">Real data</div>
+        <div class="heatmap"><div></div><div class="hour">0</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">6</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">12</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">18</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">23</div><div class="day">Mon</div><div class="cell" title="Mon 0:00 - 2,521 calls" style="background: #2563eb; opacity: 0.462;"></div><div class="cell" title="Mon 1:00 - 2,321 calls" style="background: #2563eb; opacity: 0.432;"></div><div class="cell" title="Mon 2:00 - 1,962 calls" style="background: #2563eb; opacity: 0.378;"></div><div class="cell" title="Mon 3:00 - 1,509 calls" style="background: #2563eb; opacity: 0.309;"></div><div class="cell" title="Mon 4:00 - 1,545 calls" style="background: #2563eb; opacity: 0.314;"></div><div class="cell" title="Mon 5:00 - 2,188 calls" style="background: #2563eb; opacity: 0.412;"></div><div class="cell" title="Mon 6:00 - 2,313 calls" style="background: #2563eb; opacity: 0.431;"></div><div class="cell" title="Mon 7:00 - 3,190 calls" style="background: #2563eb; opacity: 0.564;"></div><div class="cell" title="Mon 8:00 - 3,991 calls" style="background: #2563eb; opacity: 0.685;"></div><div class="cell" title="Mon 9:00 - 4,197 calls" style="background: #2563eb; opacity: 0.717;"></div><div class="cell" title="Mon 10:00 - 4,121 calls" style="background: #2563eb; opacity: 0.705;"></div><div class="cell" title="Mon 11:00 - 4,449 calls" style="background: #2563eb; opacity: 0.755;"></div><div class="cell" title="Mon 12:00 - 5,195 calls" style="background: #2563eb; opacity: 0.868;"></div><div class="cell" title="Mon 13:00 - 4,777 calls" style="background: #2563eb; opacity: 0.805;"></div><div class="cell" title="Mon 14:00 - 4,739 calls" style="background: #2563eb; opacity: 0.799;"></div><div class="cell" title="Mon 15:00 - 4,667 calls" style="background: #2563eb; opacity: 0.788;"></div><div class="cell" title="Mon 16:00 - 4,654 calls" style="background: #2563eb; opacity: 0.786;"></div><div class="cell" title="Mon 17:00 - 4,222 calls" style="background: #2563eb; opacity: 0.720;"></div><div class="cell" title="Mon 18:00 - 3,713 calls" style="background: #2563eb; opacity: 0.643;"></div><div class="cell" title="Mon 19:00 - 3,844 calls" style="background: #2563eb; opacity: 0.663;"></div><div class="cell" title="Mon 20:00 - 3,740 calls" style="background: #2563eb; opacity: 0.647;"></div><div class="cell" title="Mon 21:00 - 3,608 calls" style="background: #2563eb; opacity: 0.627;"></div><div class="cell" title="Mon 22:00 - 3,119 calls" style="background: #2563eb; opacity: 0.553;"></div><div class="cell" title="Mon 23:00 - 3,119 calls" style="background: #2563eb; opacity: 0.553;"></div><div class="day">Tue</div><div class="cell" title="Tue 0:00 - 2,673 calls" style="background: #2563eb; opacity: 0.485;"></div><div class="cell" title="Tue 1:00 - 2,096 calls" style="background: #2563eb; opacity: 0.398;"></div><div class="cell" title="Tue 2:00 - 1,901 calls" style="background: #2563eb; opacity: 0.368;"></div><div class="cell" title="Tue 3:00 - 1,519 calls" style="background: #2563eb; opacity: 0.310;"></div><div class="cell" title="Tue 4:00 - 1,450 calls" style="background: #2563eb; opacity: 0.300;"></div><div class="cell" title="Tue 5:00 - 1,947 calls" style="background: #2563eb; opacity: 0.375;"></div><div class="cell" title="Tue 6:00 - 2,363 calls" style="background: #2563eb; opacity: 0.438;"></div><div class="cell" title="Tue 7:00 - 3,329 calls" style="background: #2563eb; opacity: 0.585;"></div><div class="cell" title="Tue 8:00 - 4,119 calls" style="background: #2563eb; opacity: 0.705;"></div><div class="cell" title="Tue 9:00 - 4,434 calls" style="background: #2563eb; opacity: 0.753;"></div><div class="cell" title="Tue 10:00 - 4,702 calls" style="background: #2563eb; opacity: 0.793;"></div><div class="cell" title="Tue 11:00 - 4,586 calls" style="background: #2563eb; opacity: 0.776;"></div><div class="cell" title="Tue 12:00 - 5,354 calls" style="background: #2563eb; opacity: 0.892;"></div><div class="cell" title="Tue 13:00 - 5,368 calls" style="background: #2563eb; opacity: 0.894;"></div><div class="cell" title="Tue 14:00 - 4,982 calls" style="background: #2563eb; opacity: 0.836;"></div><div class="cell" title="Tue 15:00 - 4,767 calls" style="background: #2563eb; opacity: 0.803;"></div><div class="cell" title="Tue 16:00 - 4,357 calls" style="background: #2563eb; opacity: 0.741;"></div><div class="cell" title="Tue 17:00 - 4,316 calls" style="background: #2563eb; opacity: 0.735;"></div><div class="cell" title="Tue 18:00 - 3,933 calls" style="background: #2563eb; opacity: 0.677;"></div><div class="cell" title="Tue 19:00 - 3,985 calls" style="background: #2563eb; opacity: 0.684;"></div><div class="cell" title="Tue 20:00 - 3,907 calls" style="background: #2563eb; opacity: 0.673;"></div><div class="cell" title="Tue 21:00 - 3,850 calls" style="background: #2563eb; opacity: 0.664;"></div><div class="cell" title="Tue 22:00 - 3,339 calls" style="background: #2563eb; opacity: 0.586;"></div><div class="cell" title="Tue 23:00 - 3,096 calls" style="background: #2563eb; opacity: 0.550;"></div><div class="day">Wed</div><div class="cell" title="Wed 0:00 - 2,818 calls" style="background: #2563eb; opacity: 0.507;"></div><div class="cell" title="Wed 1:00 - 2,289 calls" style="background: #2563eb; opacity: 0.427;"></div><div class="cell" title="Wed 2:00 - 2,228 calls" style="background: #2563eb; opacity: 0.418;"></div><div class="cell" title="Wed 3:00 - 1,632 calls" style="background: #2563eb; opacity: 0.328;"></div><div class="cell" title="Wed 4:00 - 1,484 calls" style="background: #2563eb; opacity: 0.305;"></div><div class="cell" title="Wed 5:00 - 1,872 calls" style="background: #2563eb; opacity: 0.364;"></div><div class="cell" title="Wed 6:00 - 2,265 calls" style="background: #2563eb; opacity: 0.424;"></div><div class="cell" title="Wed 7:00 - 3,255 calls" style="background: #2563eb; opacity: 0.574;"></div><div class="cell" title="Wed 8:00 - 4,196 calls" style="background: #2563eb; opacity: 0.716;"></div><div class="cell" title="Wed 9:00 - 4,365 calls" style="background: #2563eb; opacity: 0.742;"></div><div class="cell" title="Wed 10:00 - 4,194 calls" style="background: #2563eb; opacity: 0.716;"></div><div class="cell" title="Wed 11:00 - 4,645 calls" style="background: #2563eb; opacity: 0.785;"></div><div class="cell" title="Wed 12:00 - 5,406 calls" style="background: #2563eb; opacity: 0.900;"></div><div class="cell" title="Wed 13:00 - 5,013 calls" style="background: #2563eb; opacity: 0.840;"></div><div class="cell" title="Wed 14:00 - 4,470 calls" style="background: #2563eb; opacity: 0.758;"></div><div class="cell" title="Wed 15:00 - 4,490 calls" style="background: #2563eb; opacity: 0.761;"></div><div class="cell" title="Wed 16:00 - 4,388 calls" style="background: #2563eb; opacity: 0.746;"></div><div class="cell" title="Wed 17:00 - 4,319 calls" style="background: #2563eb; opacity: 0.735;"></div><div class="cell" title="Wed 18:00 - 3,821 calls" style="background: #2563eb; opacity: 0.660;"></div><div class="cell" title="Wed 19:00 - 3,862 calls" style="background: #2563eb; opacity: 0.666;"></div><div class="cell" title="Wed 20:00 - 3,973 calls" style="background: #2563eb; opacity: 0.683;"></div><div class="cell" title="Wed 21:00 - 3,755 calls" style="background: #2563eb; opacity: 0.650;"></div><div class="cell" title="Wed 22:00 - 3,427 calls" style="background: #2563eb; opacity: 0.600;"></div><div class="cell" title="Wed 23:00 - 2,970 calls" style="background: #2563eb; opacity: 0.530;"></div><div class="day">Thu</div><div class="cell" title="Thu 0:00 - 2,505 calls" style="background: #2563eb; opacity: 0.460;"></div><div class="cell" title="Thu 1:00 - 2,210 calls" style="background: #2563eb; opacity: 0.415;"></div><div class="cell" title="Thu 2:00 - 1,827 calls" style="background: #2563eb; opacity: 0.357;"></div><div class="cell" title="Thu 3:00 - 1,517 calls" style="background: #2563eb; opacity: 0.310;"></div><div class="cell" title="Thu 4:00 - 1,497 calls" style="background: #2563eb; opacity: 0.307;"></div><div class="cell" title="Thu 5:00 - 1,998 calls" style="background: #2563eb; opacity: 0.383;"></div><div class="cell" title="Thu 6:00 - 2,395 calls" style="background: #2563eb; opacity: 0.443;"></div><div class="cell" title="Thu 7:00 - 3,043 calls" style="background: #2563eb; opacity: 0.542;"></div><div class="cell" title="Thu 8:00 - 4,029 calls" style="background: #2563eb; opacity: 0.691;"></div><div class="cell" title="Thu 9:00 - 4,237 calls" style="background: #2563eb; opacity: 0.723;"></div><div class="cell" title="Thu 10:00 - 4,161 calls" style="background: #2563eb; opacity: 0.711;"></div><div class="cell" title="Thu 11:00 - 4,650 calls" style="background: #2563eb; opacity: 0.785;"></div><div class="cell" title="Thu 12:00 - 5,198 calls" style="background: #2563eb; opacity: 0.868;"></div><div class="cell" title="Thu 13:00 - 5,011 calls" style="background: #2563eb; opacity: 0.840;"></div><div class="cell" title="Thu 14:00 - 4,504 calls" style="background: #2563eb; opacity: 0.763;"></div><div class="cell" title="Thu 15:00 - 4,516 calls" style="background: #2563eb; opacity: 0.765;"></div><div class="cell" title="Thu 16:00 - 4,669 calls" style="background: #2563eb; opacity: 0.788;"></div><div class="cell" title="Thu 17:00 - 3,834 calls" style="background: #2563eb; opacity: 0.662;"></div><div class="cell" title="Thu 18:00 - 3,897 calls" style="background: #2563eb; opacity: 0.671;"></div><div class="cell" title="Thu 19:00 - 3,754 calls" style="background: #2563eb; opacity: 0.649;"></div><div class="cell" title="Thu 20:00 - 3,724 calls" style="background: #2563eb; opacity: 0.645;"></div><div class="cell" title="Thu 21:00 - 3,701 calls" style="background: #2563eb; opacity: 0.641;"></div><div class="cell" title="Thu 22:00 - 3,442 calls" style="background: #2563eb; opacity: 0.602;"></div><div class="cell" title="Thu 23:00 - 3,029 calls" style="background: #2563eb; opacity: 0.539;"></div><div class="day">Fri</div><div class="cell" title="Fri 0:00 - 2,860 calls" style="background: #2563eb; opacity: 0.514;"></div><div class="cell" title="Fri 1:00 - 2,226 calls" style="background: #2563eb; opacity: 0.418;"></div><div class="cell" title="Fri 2:00 - 2,127 calls" style="background: #2563eb; opacity: 0.403;"></div><div class="cell" title="Fri 3:00 - 1,446 calls" style="background: #2563eb; opacity: 0.299;"></div><div class="cell" title="Fri 4:00 - 1,665 calls" style="background: #2563eb; opacity: 0.333;"></div><div class="cell" title="Fri 5:00 - 1,940 calls" style="background: #2563eb; opacity: 0.374;"></div><div class="cell" title="Fri 6:00 - 2,205 calls" style="background: #2563eb; opacity: 0.414;"></div><div class="cell" title="Fri 7:00 - 3,121 calls" style="background: #2563eb; opacity: 0.553;"></div><div class="cell" title="Fri 8:00 - 3,865 calls" style="background: #2563eb; opacity: 0.666;"></div><div class="cell" title="Fri 9:00 - 4,226 calls" style="background: #2563eb; opacity: 0.721;"></div><div class="cell" title="Fri 10:00 - 3,964 calls" style="background: #2563eb; opacity: 0.681;"></div><div class="cell" title="Fri 11:00 - 4,631 calls" style="background: #2563eb; opacity: 0.782;"></div><div class="cell" title="Fri 12:00 - 5,266 calls" style="background: #2563eb; opacity: 0.879;"></div><div class="cell" title="Fri 13:00 - 4,867 calls" style="background: #2563eb; opacity: 0.818;"></div><div class="cell" title="Fri 14:00 - 4,637 calls" style="background: #2563eb; opacity: 0.783;"></div><div class="cell" title="Fri 15:00 - 4,644 calls" style="background: #2563eb; opacity: 0.784;"></div><div class="cell" title="Fri 16:00 - 4,248 calls" style="background: #2563eb; opacity: 0.724;"></div><div class="cell" title="Fri 17:00 - 3,993 calls" style="background: #2563eb; opacity: 0.686;"></div><div class="cell" title="Fri 18:00 - 4,051 calls" style="background: #2563eb; opacity: 0.694;"></div><div class="cell" title="Fri 19:00 - 4,087 calls" style="background: #2563eb; opacity: 0.700;"></div><div class="cell" title="Fri 20:00 - 4,393 calls" style="background: #2563eb; opacity: 0.746;"></div><div class="cell" title="Fri 21:00 - 4,116 calls" style="background: #2563eb; opacity: 0.704;"></div><div class="cell" title="Fri 22:00 - 4,182 calls" style="background: #2563eb; opacity: 0.714;"></div><div class="cell" title="Fri 23:00 - 3,839 calls" style="background: #2563eb; opacity: 0.662;"></div><div class="day">Sat</div><div class="cell" title="Sat 0:00 - 3,439 calls" style="background: #2563eb; opacity: 0.602;"></div><div class="cell" title="Sat 1:00 - 3,151 calls" style="background: #2563eb; opacity: 0.558;"></div><div class="cell" title="Sat 2:00 - 2,836 calls" style="background: #2563eb; opacity: 0.510;"></div><div class="cell" title="Sat 3:00 - 1,808 calls" style="background: #2563eb; opacity: 0.354;"></div><div class="cell" title="Sat 4:00 - 1,664 calls" style="background: #2563eb; opacity: 0.332;"></div><div class="cell" title="Sat 5:00 - 1,708 calls" style="background: #2563eb; opacity: 0.339;"></div><div class="cell" title="Sat 6:00 - 1,668 calls" style="background: #2563eb; opacity: 0.333;"></div><div class="cell" title="Sat 7:00 - 2,236 calls" style="background: #2563eb; opacity: 0.419;"></div><div class="cell" title="Sat 8:00 - 2,745 calls" style="background: #2563eb; opacity: 0.496;"></div><div class="cell" title="Sat 9:00 - 3,002 calls" style="background: #2563eb; opacity: 0.535;"></div><div class="cell" title="Sat 10:00 - 3,168 calls" style="background: #2563eb; opacity: 0.561;"></div><div class="cell" title="Sat 11:00 - 3,612 calls" style="background: #2563eb; opacity: 0.628;"></div><div class="cell" title="Sat 12:00 - 4,058 calls" style="background: #2563eb; opacity: 0.696;"></div><div class="cell" title="Sat 13:00 - 3,907 calls" style="background: #2563eb; opacity: 0.673;"></div><div class="cell" title="Sat 14:00 - 3,692 calls" style="background: #2563eb; opacity: 0.640;"></div><div class="cell" title="Sat 15:00 - 3,690 calls" style="background: #2563eb; opacity: 0.640;"></div><div class="cell" title="Sat 16:00 - 3,720 calls" style="background: #2563eb; opacity: 0.644;"></div><div class="cell" title="Sat 17:00 - 3,601 calls" style="background: #2563eb; opacity: 0.626;"></div><div class="cell" title="Sat 18:00 - 3,385 calls" style="background: #2563eb; opacity: 0.593;"></div><div class="cell" title="Sat 19:00 - 3,434 calls" style="background: #2563eb; opacity: 0.601;"></div><div class="cell" title="Sat 20:00 - 3,936 calls" style="background: #2563eb; opacity: 0.677;"></div><div class="cell" title="Sat 21:00 - 3,835 calls" style="background: #2563eb; opacity: 0.662;"></div><div class="cell" title="Sat 22:00 - 3,682 calls" style="background: #2563eb; opacity: 0.638;"></div><div class="cell" title="Sat 23:00 - 3,808 calls" style="background: #2563eb; opacity: 0.658;"></div><div class="day">Sun</div><div class="cell" title="Sun 0:00 - 3,275 calls" style="background: #2563eb; opacity: 0.577;"></div><div class="cell" title="Sun 1:00 - 2,982 calls" style="background: #2563eb; opacity: 0.532;"></div><div class="cell" title="Sun 2:00 - 2,635 calls" style="background: #2563eb; opacity: 0.480;"></div><div class="cell" title="Sun 3:00 - 1,981 calls" style="background: #2563eb; opacity: 0.380;"></div><div class="cell" title="Sun 4:00 - 1,662 calls" style="background: #2563eb; opacity: 0.332;"></div><div class="cell" title="Sun 5:00 - 1,740 calls" style="background: #2563eb; opacity: 0.344;"></div><div class="cell" title="Sun 6:00 - 1,604 calls" style="background: #2563eb; opacity: 0.323;"></div><div class="cell" title="Sun 7:00 - 1,921 calls" style="background: #2563eb; opacity: 0.371;"></div><div class="cell" title="Sun 8:00 - 2,480 calls" style="background: #2563eb; opacity: 0.456;"></div><div class="cell" title="Sun 9:00 - 2,645 calls" style="background: #2563eb; opacity: 0.481;"></div><div class="cell" title="Sun 10:00 - 2,952 calls" style="background: #2563eb; opacity: 0.528;"></div><div class="cell" title="Sun 11:00 - 3,410 calls" style="background: #2563eb; opacity: 0.597;"></div><div class="cell" title="Sun 12:00 - 3,886 calls" style="background: #2563eb; opacity: 0.669;"></div><div class="cell" title="Sun 13:00 - 3,696 calls" style="background: #2563eb; opacity: 0.641;"></div><div class="cell" title="Sun 14:00 - 3,791 calls" style="background: #2563eb; opacity: 0.655;"></div><div class="cell" title="Sun 15:00 - 3,757 calls" style="background: #2563eb; opacity: 0.650;"></div><div class="cell" title="Sun 16:00 - 3,547 calls" style="background: #2563eb; opacity: 0.618;"></div><div class="cell" title="Sun 17:00 - 3,356 calls" style="background: #2563eb; opacity: 0.589;"></div><div class="cell" title="Sun 18:00 - 3,193 calls" style="background: #2563eb; opacity: 0.564;"></div><div class="cell" title="Sun 19:00 - 3,444 calls" style="background: #2563eb; opacity: 0.602;"></div><div class="cell" title="Sun 20:00 - 3,882 calls" style="background: #2563eb; opacity: 0.669;"></div><div class="cell" title="Sun 21:00 - 3,434 calls" style="background: #2563eb; opacity: 0.601;"></div><div class="cell" title="Sun 22:00 - 3,381 calls" style="background: #2563eb; opacity: 0.593;"></div><div class="cell" title="Sun 23:00 - 2,696 calls" style="background: #2563eb; opacity: 0.489;"></div></div>
+      </div>
+    
+      
+      <div class="chart-panel">
+        <div class="heatmap-title">Synthetic data</div>
+        <div class="heatmap"><div></div><div class="hour">0</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">6</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">12</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">18</div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour"></div><div class="hour">23</div><div class="day">Mon</div><div class="cell" title="Mon 0:00 - 2,591 calls" style="background: #0f766e; opacity: 0.475;"></div><div class="cell" title="Mon 1:00 - 2,366 calls" style="background: #0f766e; opacity: 0.441;"></div><div class="cell" title="Mon 2:00 - 1,901 calls" style="background: #0f766e; opacity: 0.370;"></div><div class="cell" title="Mon 3:00 - 1,313 calls" style="background: #0f766e; opacity: 0.280;"></div><div class="cell" title="Mon 4:00 - 1,489 calls" style="background: #0f766e; opacity: 0.307;"></div><div class="cell" title="Mon 5:00 - 2,216 calls" style="background: #0f766e; opacity: 0.418;"></div><div class="cell" title="Mon 6:00 - 2,277 calls" style="background: #0f766e; opacity: 0.428;"></div><div class="cell" title="Mon 7:00 - 3,052 calls" style="background: #0f766e; opacity: 0.546;"></div><div class="cell" title="Mon 8:00 - 3,931 calls" style="background: #0f766e; opacity: 0.680;"></div><div class="cell" title="Mon 9:00 - 4,286 calls" style="background: #0f766e; opacity: 0.734;"></div><div class="cell" title="Mon 10:00 - 4,112 calls" style="background: #0f766e; opacity: 0.708;"></div><div class="cell" title="Mon 11:00 - 4,487 calls" style="background: #0f766e; opacity: 0.765;"></div><div class="cell" title="Mon 12:00 - 5,110 calls" style="background: #0f766e; opacity: 0.860;"></div><div class="cell" title="Mon 13:00 - 4,553 calls" style="background: #0f766e; opacity: 0.775;"></div><div class="cell" title="Mon 14:00 - 4,866 calls" style="background: #0f766e; opacity: 0.823;"></div><div class="cell" title="Mon 15:00 - 4,608 calls" style="background: #0f766e; opacity: 0.783;"></div><div class="cell" title="Mon 16:00 - 4,599 calls" style="background: #0f766e; opacity: 0.782;"></div><div class="cell" title="Mon 17:00 - 4,200 calls" style="background: #0f766e; opacity: 0.721;"></div><div class="cell" title="Mon 18:00 - 3,765 calls" style="background: #0f766e; opacity: 0.655;"></div><div class="cell" title="Mon 19:00 - 3,906 calls" style="background: #0f766e; opacity: 0.676;"></div><div class="cell" title="Mon 20:00 - 3,808 calls" style="background: #0f766e; opacity: 0.661;"></div><div class="cell" title="Mon 21:00 - 3,641 calls" style="background: #0f766e; opacity: 0.636;"></div><div class="cell" title="Mon 22:00 - 3,267 calls" style="background: #0f766e; opacity: 0.579;"></div><div class="cell" title="Mon 23:00 - 3,142 calls" style="background: #0f766e; opacity: 0.560;"></div><div class="day">Tue</div><div class="cell" title="Tue 0:00 - 2,723 calls" style="background: #0f766e; opacity: 0.496;"></div><div class="cell" title="Tue 1:00 - 2,089 calls" style="background: #0f766e; opacity: 0.399;"></div><div class="cell" title="Tue 2:00 - 1,875 calls" style="background: #0f766e; opacity: 0.366;"></div><div class="cell" title="Tue 3:00 - 1,416 calls" style="background: #0f766e; opacity: 0.296;"></div><div class="cell" title="Tue 4:00 - 1,418 calls" style="background: #0f766e; opacity: 0.296;"></div><div class="cell" title="Tue 5:00 - 1,851 calls" style="background: #0f766e; opacity: 0.363;"></div><div class="cell" title="Tue 6:00 - 2,602 calls" style="background: #0f766e; opacity: 0.477;"></div><div class="cell" title="Tue 7:00 - 3,462 calls" style="background: #0f766e; opacity: 0.608;"></div><div class="cell" title="Tue 8:00 - 4,089 calls" style="background: #0f766e; opacity: 0.704;"></div><div class="cell" title="Tue 9:00 - 4,538 calls" style="background: #0f766e; opacity: 0.773;"></div><div class="cell" title="Tue 10:00 - 4,738 calls" style="background: #0f766e; opacity: 0.803;"></div><div class="cell" title="Tue 11:00 - 4,620 calls" style="background: #0f766e; opacity: 0.785;"></div><div class="cell" title="Tue 12:00 - 5,177 calls" style="background: #0f766e; opacity: 0.870;"></div><div class="cell" title="Tue 13:00 - 5,372 calls" style="background: #0f766e; opacity: 0.900;"></div><div class="cell" title="Tue 14:00 - 4,807 calls" style="background: #0f766e; opacity: 0.814;"></div><div class="cell" title="Tue 15:00 - 4,876 calls" style="background: #0f766e; opacity: 0.824;"></div><div class="cell" title="Tue 16:00 - 4,180 calls" style="background: #0f766e; opacity: 0.718;"></div><div class="cell" title="Tue 17:00 - 4,425 calls" style="background: #0f766e; opacity: 0.755;"></div><div class="cell" title="Tue 18:00 - 3,950 calls" style="background: #0f766e; opacity: 0.683;"></div><div class="cell" title="Tue 19:00 - 3,921 calls" style="background: #0f766e; opacity: 0.679;"></div><div class="cell" title="Tue 20:00 - 4,091 calls" style="background: #0f766e; opacity: 0.704;"></div><div class="cell" title="Tue 21:00 - 3,809 calls" style="background: #0f766e; opacity: 0.661;"></div><div class="cell" title="Tue 22:00 - 3,360 calls" style="background: #0f766e; opacity: 0.593;"></div><div class="cell" title="Tue 23:00 - 3,060 calls" style="background: #0f766e; opacity: 0.547;"></div><div class="day">Wed</div><div class="cell" title="Wed 0:00 - 2,924 calls" style="background: #0f766e; opacity: 0.526;"></div><div class="cell" title="Wed 1:00 - 2,022 calls" style="background: #0f766e; opacity: 0.389;"></div><div class="cell" title="Wed 2:00 - 2,332 calls" style="background: #0f766e; opacity: 0.436;"></div><div class="cell" title="Wed 3:00 - 1,611 calls" style="background: #0f766e; opacity: 0.326;"></div><div class="cell" title="Wed 4:00 - 1,463 calls" style="background: #0f766e; opacity: 0.303;"></div><div class="cell" title="Wed 5:00 - 1,809 calls" style="background: #0f766e; opacity: 0.356;"></div><div class="cell" title="Wed 6:00 - 2,210 calls" style="background: #0f766e; opacity: 0.417;"></div><div class="cell" title="Wed 7:00 - 3,371 calls" style="background: #0f766e; opacity: 0.595;"></div><div class="cell" title="Wed 8:00 - 4,135 calls" style="background: #0f766e; opacity: 0.711;"></div><div class="cell" title="Wed 9:00 - 4,232 calls" style="background: #0f766e; opacity: 0.726;"></div><div class="cell" title="Wed 10:00 - 4,168 calls" style="background: #0f766e; opacity: 0.716;"></div><div class="cell" title="Wed 11:00 - 4,456 calls" style="background: #0f766e; opacity: 0.760;"></div><div class="cell" title="Wed 12:00 - 5,274 calls" style="background: #0f766e; opacity: 0.885;"></div><div class="cell" title="Wed 13:00 - 4,945 calls" style="background: #0f766e; opacity: 0.835;"></div><div class="cell" title="Wed 14:00 - 4,315 calls" style="background: #0f766e; opacity: 0.739;"></div><div class="cell" title="Wed 15:00 - 4,546 calls" style="background: #0f766e; opacity: 0.774;"></div><div class="cell" title="Wed 16:00 - 4,400 calls" style="background: #0f766e; opacity: 0.752;"></div><div class="cell" title="Wed 17:00 - 4,405 calls" style="background: #0f766e; opacity: 0.752;"></div><div class="cell" title="Wed 18:00 - 3,797 calls" style="background: #0f766e; opacity: 0.660;"></div><div class="cell" title="Wed 19:00 - 3,803 calls" style="background: #0f766e; opacity: 0.661;"></div><div class="cell" title="Wed 20:00 - 4,010 calls" style="background: #0f766e; opacity: 0.692;"></div><div class="cell" title="Wed 21:00 - 3,701 calls" style="background: #0f766e; opacity: 0.645;"></div><div class="cell" title="Wed 22:00 - 3,505 calls" style="background: #0f766e; opacity: 0.615;"></div><div class="cell" title="Wed 23:00 - 2,902 calls" style="background: #0f766e; opacity: 0.523;"></div><div class="day">Thu</div><div class="cell" title="Thu 0:00 - 2,676 calls" style="background: #0f766e; opacity: 0.488;"></div><div class="cell" title="Thu 1:00 - 2,300 calls" style="background: #0f766e; opacity: 0.431;"></div><div class="cell" title="Thu 2:00 - 1,857 calls" style="background: #0f766e; opacity: 0.363;"></div><div class="cell" title="Thu 3:00 - 1,557 calls" style="background: #0f766e; opacity: 0.318;"></div><div class="cell" title="Thu 4:00 - 1,623 calls" style="background: #0f766e; opacity: 0.328;"></div><div class="cell" title="Thu 5:00 - 2,027 calls" style="background: #0f766e; opacity: 0.389;"></div><div class="cell" title="Thu 6:00 - 2,431 calls" style="background: #0f766e; opacity: 0.451;"></div><div class="cell" title="Thu 7:00 - 2,926 calls" style="background: #0f766e; opacity: 0.527;"></div><div class="cell" title="Thu 8:00 - 3,874 calls" style="background: #0f766e; opacity: 0.671;"></div><div class="cell" title="Thu 9:00 - 4,177 calls" style="background: #0f766e; opacity: 0.718;"></div><div class="cell" title="Thu 10:00 - 4,056 calls" style="background: #0f766e; opacity: 0.699;"></div><div class="cell" title="Thu 11:00 - 4,507 calls" style="background: #0f766e; opacity: 0.768;"></div><div class="cell" title="Thu 12:00 - 5,306 calls" style="background: #0f766e; opacity: 0.890;"></div><div class="cell" title="Thu 13:00 - 4,858 calls" style="background: #0f766e; opacity: 0.822;"></div><div class="cell" title="Thu 14:00 - 4,449 calls" style="background: #0f766e; opacity: 0.759;"></div><div class="cell" title="Thu 15:00 - 4,185 calls" style="background: #0f766e; opacity: 0.719;"></div><div class="cell" title="Thu 16:00 - 4,791 calls" style="background: #0f766e; opacity: 0.811;"></div><div class="cell" title="Thu 17:00 - 3,995 calls" style="background: #0f766e; opacity: 0.690;"></div><div class="cell" title="Thu 18:00 - 3,973 calls" style="background: #0f766e; opacity: 0.686;"></div><div class="cell" title="Thu 19:00 - 3,640 calls" style="background: #0f766e; opacity: 0.636;"></div><div class="cell" title="Thu 20:00 - 3,827 calls" style="background: #0f766e; opacity: 0.664;"></div><div class="cell" title="Thu 21:00 - 3,769 calls" style="background: #0f766e; opacity: 0.655;"></div><div class="cell" title="Thu 22:00 - 3,543 calls" style="background: #0f766e; opacity: 0.621;"></div><div class="cell" title="Thu 23:00 - 3,034 calls" style="background: #0f766e; opacity: 0.543;"></div><div class="day">Fri</div><div class="cell" title="Fri 0:00 - 2,809 calls" style="background: #0f766e; opacity: 0.509;"></div><div class="cell" title="Fri 1:00 - 2,067 calls" style="background: #0f766e; opacity: 0.396;"></div><div class="cell" title="Fri 2:00 - 2,088 calls" style="background: #0f766e; opacity: 0.399;"></div><div class="cell" title="Fri 3:00 - 1,432 calls" style="background: #0f766e; opacity: 0.299;"></div><div class="cell" title="Fri 4:00 - 1,612 calls" style="background: #0f766e; opacity: 0.326;"></div><div class="cell" title="Fri 5:00 - 1,990 calls" style="background: #0f766e; opacity: 0.384;"></div><div class="cell" title="Fri 6:00 - 2,174 calls" style="background: #0f766e; opacity: 0.412;"></div><div class="cell" title="Fri 7:00 - 3,073 calls" style="background: #0f766e; opacity: 0.549;"></div><div class="cell" title="Fri 8:00 - 3,852 calls" style="background: #0f766e; opacity: 0.668;"></div><div class="cell" title="Fri 9:00 - 4,194 calls" style="background: #0f766e; opacity: 0.720;"></div><div class="cell" title="Fri 10:00 - 3,976 calls" style="background: #0f766e; opacity: 0.687;"></div><div class="cell" title="Fri 11:00 - 4,613 calls" style="background: #0f766e; opacity: 0.784;"></div><div class="cell" title="Fri 12:00 - 5,053 calls" style="background: #0f766e; opacity: 0.851;"></div><div class="cell" title="Fri 13:00 - 4,741 calls" style="background: #0f766e; opacity: 0.804;"></div><div class="cell" title="Fri 14:00 - 4,561 calls" style="background: #0f766e; opacity: 0.776;"></div><div class="cell" title="Fri 15:00 - 4,792 calls" style="background: #0f766e; opacity: 0.811;"></div><div class="cell" title="Fri 16:00 - 4,148 calls" style="background: #0f766e; opacity: 0.713;"></div><div class="cell" title="Fri 17:00 - 4,085 calls" style="background: #0f766e; opacity: 0.704;"></div><div class="cell" title="Fri 18:00 - 4,069 calls" style="background: #0f766e; opacity: 0.701;"></div><div class="cell" title="Fri 19:00 - 4,335 calls" style="background: #0f766e; opacity: 0.742;"></div><div class="cell" title="Fri 20:00 - 4,511 calls" style="background: #0f766e; opacity: 0.769;"></div><div class="cell" title="Fri 21:00 - 4,146 calls" style="background: #0f766e; opacity: 0.713;"></div><div class="cell" title="Fri 22:00 - 4,236 calls" style="background: #0f766e; opacity: 0.727;"></div><div class="cell" title="Fri 23:00 - 4,038 calls" style="background: #0f766e; opacity: 0.696;"></div><div class="day">Sat</div><div class="cell" title="Sat 0:00 - 3,317 calls" style="background: #0f766e; opacity: 0.586;"></div><div class="cell" title="Sat 1:00 - 3,389 calls" style="background: #0f766e; opacity: 0.597;"></div><div class="cell" title="Sat 2:00 - 2,676 calls" style="background: #0f766e; opacity: 0.488;"></div><div class="cell" title="Sat 3:00 - 1,885 calls" style="background: #0f766e; opacity: 0.368;"></div><div class="cell" title="Sat 4:00 - 1,680 calls" style="background: #0f766e; opacity: 0.336;"></div><div class="cell" title="Sat 5:00 - 1,712 calls" style="background: #0f766e; opacity: 0.341;"></div><div class="cell" title="Sat 6:00 - 1,604 calls" style="background: #0f766e; opacity: 0.325;"></div><div class="cell" title="Sat 7:00 - 2,204 calls" style="background: #0f766e; opacity: 0.416;"></div><div class="cell" title="Sat 8:00 - 2,853 calls" style="background: #0f766e; opacity: 0.515;"></div><div class="cell" title="Sat 9:00 - 3,127 calls" style="background: #0f766e; opacity: 0.557;"></div><div class="cell" title="Sat 10:00 - 3,319 calls" style="background: #0f766e; opacity: 0.587;"></div><div class="cell" title="Sat 11:00 - 3,554 calls" style="background: #0f766e; opacity: 0.622;"></div><div class="cell" title="Sat 12:00 - 3,997 calls" style="background: #0f766e; opacity: 0.690;"></div><div class="cell" title="Sat 13:00 - 3,823 calls" style="background: #0f766e; opacity: 0.664;"></div><div class="cell" title="Sat 14:00 - 3,744 calls" style="background: #0f766e; opacity: 0.651;"></div><div class="cell" title="Sat 15:00 - 3,600 calls" style="background: #0f766e; opacity: 0.630;"></div><div class="cell" title="Sat 16:00 - 3,922 calls" style="background: #0f766e; opacity: 0.679;"></div><div class="cell" title="Sat 17:00 - 3,517 calls" style="background: #0f766e; opacity: 0.617;"></div><div class="cell" title="Sat 18:00 - 3,153 calls" style="background: #0f766e; opacity: 0.561;"></div><div class="cell" title="Sat 19:00 - 3,478 calls" style="background: #0f766e; opacity: 0.611;"></div><div class="cell" title="Sat 20:00 - 3,906 calls" style="background: #0f766e; opacity: 0.676;"></div><div class="cell" title="Sat 21:00 - 3,957 calls" style="background: #0f766e; opacity: 0.684;"></div><div class="cell" title="Sat 22:00 - 3,714 calls" style="background: #0f766e; opacity: 0.647;"></div><div class="cell" title="Sat 23:00 - 3,755 calls" style="background: #0f766e; opacity: 0.653;"></div><div class="day">Sun</div><div class="cell" title="Sun 0:00 - 3,243 calls" style="background: #0f766e; opacity: 0.575;"></div><div class="cell" title="Sun 1:00 - 2,714 calls" style="background: #0f766e; opacity: 0.494;"></div><div class="cell" title="Sun 2:00 - 2,556 calls" style="background: #0f766e; opacity: 0.470;"></div><div class="cell" title="Sun 3:00 - 1,947 calls" style="background: #0f766e; opacity: 0.377;"></div><div class="cell" title="Sun 4:00 - 1,736 calls" style="background: #0f766e; opacity: 0.345;"></div><div class="cell" title="Sun 5:00 - 1,707 calls" style="background: #0f766e; opacity: 0.341;"></div><div class="cell" title="Sun 6:00 - 1,568 calls" style="background: #0f766e; opacity: 0.319;"></div><div class="cell" title="Sun 7:00 - 1,956 calls" style="background: #0f766e; opacity: 0.379;"></div><div class="cell" title="Sun 8:00 - 2,442 calls" style="background: #0f766e; opacity: 0.453;"></div><div class="cell" title="Sun 9:00 - 2,681 calls" style="background: #0f766e; opacity: 0.489;"></div><div class="cell" title="Sun 10:00 - 3,142 calls" style="background: #0f766e; opacity: 0.560;"></div><div class="cell" title="Sun 11:00 - 3,487 calls" style="background: #0f766e; opacity: 0.612;"></div><div class="cell" title="Sun 12:00 - 3,989 calls" style="background: #0f766e; opacity: 0.689;"></div><div class="cell" title="Sun 13:00 - 3,633 calls" style="background: #0f766e; opacity: 0.635;"></div><div class="cell" title="Sun 14:00 - 3,857 calls" style="background: #0f766e; opacity: 0.669;"></div><div class="cell" title="Sun 15:00 - 3,598 calls" style="background: #0f766e; opacity: 0.629;"></div><div class="cell" title="Sun 16:00 - 3,600 calls" style="background: #0f766e; opacity: 0.630;"></div><div class="cell" title="Sun 17:00 - 3,301 calls" style="background: #0f766e; opacity: 0.584;"></div><div class="cell" title="Sun 18:00 - 3,188 calls" style="background: #0f766e; opacity: 0.567;"></div><div class="cell" title="Sun 19:00 - 3,168 calls" style="background: #0f766e; opacity: 0.564;"></div><div class="cell" title="Sun 20:00 - 3,903 calls" style="background: #0f766e; opacity: 0.676;"></div><div class="cell" title="Sun 21:00 - 3,587 calls" style="background: #0f766e; opacity: 0.628;"></div><div class="cell" title="Sun 22:00 - 3,252 calls" style="background: #0f766e; opacity: 0.576;"></div><div class="cell" title="Sun 23:00 - 2,661 calls" style="background: #0f766e; opacity: 0.486;"></div></div>
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Key Pattern Comparisons</h2>
+    <div class="legend">
+      <span><span class="swatch" style="background: var(--real);"></span>Real</span>
+      <span><span class="swatch" style="background: var(--synthetic);"></span>Synthetic</span>
+    </div>
+    <div class="grid two">
+      
+      <div class="chart-panel">
+        <h3>Call Types</h3>
+        <p class="stat-note">Each Real and Synthetic bar starts at zero. The pill shows the absolute gap.</p>
+        
+            <div class="bar-row">
+              <div class="bar-label">DISTURBANCE - OTHER</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">9.9%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 99.9%;"></div></div>
+                  <div class="mini-value">9.9%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">SUSPICIOUS CIRCUM. - SUSPICIOUS PERSON</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 87.9%;"></div></div>
+                  <div class="mini-value">8.7%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 88.9%;"></div></div>
+                  <div class="mini-value">8.8%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">ASSIST PUBLIC - OTHER (NON-SPECIFIED)</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 72.6%;"></div></div>
+                  <div class="mini-value">7.2%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 72.4%;"></div></div>
+                  <div class="mini-value">7.1%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">CRISIS COMPLAINT - GENERAL</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 51.1%;"></div></div>
+                  <div class="mini-value">5.0%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 51.0%;"></div></div>
+                  <div class="mini-value">5.0%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">PROWLER - TRESPASS</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 37.3%;"></div></div>
+                  <div class="mini-value">3.7%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 37.4%;"></div></div>
+                  <div class="mini-value">3.7%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">TRAFFIC - PARKING VIOL (EXCEPT ABANDONED CAR)</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 37.1%;"></div></div>
+                  <div class="mini-value">3.7%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 37.4%;"></div></div>
+                  <div class="mini-value">3.7%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">ASSIST OTHER AGENCY - CITY AGENCY</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 35.5%;"></div></div>
+                  <div class="mini-value">3.5%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 35.0%;"></div></div>
+                  <div class="mini-value">3.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">TRAFFIC - MOVING VIOLATION</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 33.3%;"></div></div>
+                  <div class="mini-value">3.3%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 33.0%;"></div></div>
+                  <div class="mini-value">3.3%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">TRAFFIC - MV COLLISION INVESTIGATION</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 33.1%;"></div></div>
+                  <div class="mini-value">3.3%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 33.9%;"></div></div>
+                  <div class="mini-value">3.4%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">ASSAULTS, OTHER</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 30.3%;"></div></div>
+                  <div class="mini-value">3.0%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 30.4%;"></div></div>
+                  <div class="mini-value">3.0%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">DIRECTED PATROL ACTIVITY</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 26.3%;"></div></div>
+                  <div class="mini-value">2.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 26.1%;"></div></div>
+                  <div class="mini-value">2.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">PREMISE CHECKS - CRIME PREVENTION</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 25.3%;"></div></div>
+                  <div class="mini-value">2.5%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 24.9%;"></div></div>
+                  <div class="mini-value">2.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+      </div>
+    
+      
+      <div class="chart-panel">
+        <h3>Priority Levels</h3>
+        <p class="stat-note">Each Real and Synthetic bar starts at zero. The pill shows the absolute gap.</p>
+        
+            <div class="bar-row">
+              <div class="bar-label">2</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 99.6%;"></div></div>
+                  <div class="mini-value">36.8%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">37.0%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.2 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">3</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 56.4%;"></div></div>
+                  <div class="mini-value">20.9%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 56.4%;"></div></div>
+                  <div class="mini-value">20.8%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">1</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 53.0%;"></div></div>
+                  <div class="mini-value">19.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 52.9%;"></div></div>
+                  <div class="mini-value">19.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">7</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 30.5%;"></div></div>
+                  <div class="mini-value">11.3%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 30.2%;"></div></div>
+                  <div class="mini-value">11.2%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">4</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 15.1%;"></div></div>
+                  <div class="mini-value">5.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 15.2%;"></div></div>
+                  <div class="mini-value">5.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">5</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 12.0%;"></div></div>
+                  <div class="mini-value">4.5%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 12.0%;"></div></div>
+                  <div class="mini-value">4.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">9</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 3.7%;"></div></div>
+                  <div class="mini-value">1.4%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 3.8%;"></div></div>
+                  <div class="mini-value">1.4%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+      </div>
+    
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Geographic Pattern</h2>
+    <p class="subtitle">This section compares where calls generally occur using broad area fields, not individual address or coordinate records.</p>
+    
+      <div class="chart-panel">
+        <h3>Call Share By Dispatch Neighborhood</h3>
+        <p class="stat-note">Each Real and Synthetic bar starts at zero. The pill shows the absolute gap.</p>
+        
+            <div class="bar-row">
+              <div class="bar-label">CAPITOL HILL</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">7.4%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 98.9%;"></div></div>
+                  <div class="mini-value">7.3%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">DOWNTOWN COMMERCIAL</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 82.6%;"></div></div>
+                  <div class="mini-value">6.1%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 81.6%;"></div></div>
+                  <div class="mini-value">6.1%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">NORTHGATE</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 71.6%;"></div></div>
+                  <div class="mini-value">5.3%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 71.0%;"></div></div>
+                  <div class="mini-value">5.3%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">CHINATOWN/INTERNATIONAL DISTRICT</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 63.2%;"></div></div>
+                  <div class="mini-value">4.7%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 62.3%;"></div></div>
+                  <div class="mini-value">4.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">SLU/CASCADE</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 62.2%;"></div></div>
+                  <div class="mini-value">4.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 60.7%;"></div></div>
+                  <div class="mini-value">4.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">FIRST HILL</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 52.1%;"></div></div>
+                  <div class="mini-value">3.9%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 52.1%;"></div></div>
+                  <div class="mini-value">3.9%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">QUEEN ANNE</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 47.0%;"></div></div>
+                  <div class="mini-value">3.5%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 47.5%;"></div></div>
+                  <div class="mini-value">3.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">UNIVERSITY</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 43.6%;"></div></div>
+                  <div class="mini-value">3.2%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 43.4%;"></div></div>
+                  <div class="mini-value">3.2%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">BALLARD SOUTH</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 39.3%;"></div></div>
+                  <div class="mini-value">2.9%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 39.8%;"></div></div>
+                  <div class="mini-value">3.0%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">LAKECITY</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 34.7%;"></div></div>
+                  <div class="mini-value">2.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 35.6%;"></div></div>
+                  <div class="mini-value">2.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">UNKNOWN</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 34.0%;"></div></div>
+                  <div class="mini-value">2.5%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 34.3%;"></div></div>
+                  <div class="mini-value">2.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">BELLTOWN</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 33.9%;"></div></div>
+                  <div class="mini-value">2.5%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 33.6%;"></div></div>
+                  <div class="mini-value">2.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+      </div>
+    
+  </section>
+
+  <section class="section">
+    <h2>Response Time</h2>
+    
+      <div class="grid metrics">
+      <div class="metric">
+        <div class="label">Real median</div>
+        <div class="value">2.95 min</div>
+        <div class="note">Middle dispatch-to-arrival time in the real data.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Synthetic median</div>
+        <div class="value">2.98 min</div>
+        <div class="note">Middle dispatch-to-arrival time in the synthetic data.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Median gap</div>
+        <div class="value">0.03 min</div>
+        <div class="note">Absolute difference between the two medians.</div>
+      </div>
+    
+      <div class="metric">
+        <div class="label">Distribution distance</div>
+        <div class="value">0.0023</div>
+        <div class="note">Lower means the full response-time pattern is closer.</div>
+      </div>
+    </div>
+      
+      <div class="curve-card">
+        <h3>Dispatch-To-Arrival Distribution Curve</h3>
+        <p class="stat-note">This curve shows the share of calls that arrived within each number of minutes. The blue and green lines should closely track each other.</p>
+        <svg class="curve-svg" viewBox="0 0 760 260" role="img" aria-label="Dispatch-To-Arrival Distribution Curve">
+          <rect x="0" y="0" width="760" height="260" fill="#ffffff" />
+          <line x1="54" y1="218.0" x2="742" y2="218.0" stroke="#e6ebf0" /><text x="44" y="222.0" text-anchor="end" fill="#5d6875" font-size="11">0%</text><line x1="54" y1="118.0" x2="742" y2="118.0" stroke="#e6ebf0" /><text x="44" y="122.0" text-anchor="end" fill="#5d6875" font-size="11">50%</text><line x1="54" y1="18.0" x2="742" y2="18.0" stroke="#e6ebf0" /><text x="44" y="22.0" text-anchor="end" fill="#5d6875" font-size="11">100%</text><line x1="54.0" y1="18" x2="54.0" y2="218" stroke="#eef2f6" /><text x="54.0" y="243" text-anchor="middle" fill="#5d6875" font-size="11">0 min</text><line x1="398.0" y1="18" x2="398.0" y2="218" stroke="#eef2f6" /><text x="398.0" y="243" text-anchor="middle" fill="#5d6875" font-size="11">14 min</text><line x1="742.0" y1="18" x2="742.0" y2="218" stroke="#eef2f6" /><text x="742.0" y="243" text-anchor="middle" fill="#5d6875" font-size="11">29 min</text>
+          <line x1="54" y1="218" x2="742" y2="218" stroke="#b8c1cc" />
+          <line x1="54" y1="18" x2="54" y2="218" stroke="#b8c1cc" />
+          <polyline points="54.0,142.4 76.9,132.5 99.9,126.2 122.8,118.7 145.7,110.7 168.7,102.5 191.6,94.4 214.5,86.8 237.5,79.8 260.4,73.3 283.3,67.4 306.3,62.2 329.2,57.6 352.1,53.5 375.1,49.9 398.0,46.8 420.9,44.2 443.9,41.8 466.8,39.8 489.7,38.0 512.7,36.5 535.6,35.1 558.5,33.9 581.5,32.8 604.4,31.9 627.3,31.1 650.3,30.4 673.2,29.7 696.1,29.0 719.1,28.5 742.0,28.0" fill="none" stroke="#2563eb" stroke-width="3" />
+          <polyline points="54.0,142.9 76.9,132.9 99.9,126.6 122.8,119.1 145.7,111.0 168.7,102.7 191.6,94.7 214.5,87.0 237.5,79.9 260.4,73.4 283.3,67.4 306.3,62.2 329.2,57.5 352.1,53.5 375.1,49.8 398.0,46.8 420.9,44.1 443.9,41.7 466.8,39.8 489.7,38.0 512.7,36.5 535.6,35.1 558.5,33.9 581.5,32.8 604.4,31.9 627.3,31.1 650.3,30.3 673.2,29.7 696.1,29.0 719.1,28.5 742.0,28.0" fill="none" stroke="#0f766e" stroke-width="3" />
+          <circle cx="742.0" cy="28.0" r="4" fill="#2563eb" />
+          <circle cx="742.0" cy="28.0" r="4" fill="#0f766e" />
+          <text x="54" y="14" fill="#2563eb" font-size="12" font-weight="700">Real</text>
+          <text x="100" y="14" fill="#0f766e" font-size="12" font-weight="700">Synthetic</text>
+          <text x="380.0" y="258" text-anchor="middle" fill="#5d6875" font-size="11">Minutes from dispatch to arrival</text>
+        </svg>
+      </div>
+    
+      
+      <div class="chart-panel">
+        <h3>Dispatch-To-Arrival Buckets</h3>
+        <p class="stat-note">Each bucket shows the share of calls in that response-time range. The pill shows the real/synthetic gap.</p>
+        
+            <div class="bar-row">
+              <div class="bar-label">0-3 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 97.5%;"></div></div>
+                  <div class="mini-value">19.1%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 97.4%;"></div></div>
+                  <div class="mini-value">19.0%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">3-6 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">19.5%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 100.0%;"></div></div>
+                  <div class="mini-value">19.5%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">6-9 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 86.7%;"></div></div>
+                  <div class="mini-value">16.9%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 87.0%;"></div></div>
+                  <div class="mini-value">17.0%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">9-11 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 64.6%;"></div></div>
+                  <div class="mini-value">12.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 65.1%;"></div></div>
+                  <div class="mini-value">12.7%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.1 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">11-14 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 44.4%;"></div></div>
+                  <div class="mini-value">8.7%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 44.2%;"></div></div>
+                  <div class="mini-value">8.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">14-17 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 28.8%;"></div></div>
+                  <div class="mini-value">5.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 28.5%;"></div></div>
+                  <div class="mini-value">5.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">17-20 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 19.3%;"></div></div>
+                  <div class="mini-value">3.8%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 19.1%;"></div></div>
+                  <div class="mini-value">3.7%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">20-23 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 13.2%;"></div></div>
+                  <div class="mini-value">2.6%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 13.3%;"></div></div>
+                  <div class="mini-value">2.6%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">23-26 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 9.2%;"></div></div>
+                  <div class="mini-value">1.8%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 9.1%;"></div></div>
+                  <div class="mini-value">1.8%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">26-29 min</div>
+              <div class="compare-bars">
+                <div class="mini-row">
+                  <div class="series-name real">Real</div>
+                  <div class="compare-track"><div class="compare-fill real" style="width: 48.0%;"></div></div>
+                  <div class="mini-value">9.4%</div>
+                </div>
+                <div class="mini-row">
+                  <div class="series-name synthetic">Synthetic</div>
+                  <div class="compare-track"><div class="compare-fill synthetic" style="width: 47.8%;"></div></div>
+                  <div class="mini-value">9.3%</div>
+                </div>
+              </div>
+              <div class="bar-value"><span class="gap-value">0.0 pts</span></div>
+            </div>
+            
+      </div>
+    
+    
+  </section>
+
+  <section class="section">
+    <h2>Known Limits Of This Run</h2>
+    <ul class="limitations">
+      <li>This is an MVP statistical validation view, not a final privacy certification.</li><li>Synthetic event IDs are newly generated and do not represent real incidents.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Generated by SyntheticCAD. This dashboard is an executive summary; the researcher validation JSON contains the supporting metrics.
+  </footer>
+</main>
+</body>
+</html>

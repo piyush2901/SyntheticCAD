@@ -224,24 +224,22 @@ def validate_synthetic_data(
         "event_unit_structure": _event_unit_metrics(real_df, synthetic_df, mapping),
         "correlation_preservation": {},
         "methodology": {
-            "library_used": "SyntheticCAD dependency-light baseline generator using pandas and numpy.",
+            "library_used": "SyntheticCAD local synthesis engine.",
             "method_summary": (
-                "The baseline generator learns mapped field distributions from the local CSV, "
-                "creates new event identifiers, samples categorical patterns, preserves call-time "
-                "patterns by day and hour, regenerates timestamps when unit-level timing fields "
-                "are available, and avoids copying mapped street-level location text."
+                "The synthesis engine reads mapped CAD fields locally, creates new synthetic "
+                "records, and compares the synthetic output against the original source patterns."
             ),
             "offline_processing": True,
         },
         "privacy_statement": (
             "The exported synthetic rows are newly generated records and do not correspond to real "
-            "individuals or real incidents. This baseline report does not certify resistance to all "
+            "individuals or real incidents. This report does not certify resistance to all "
             "re-identification or linkage attacks."
         ),
         "data_limitations": _data_limitations(mapping),
         "methodology_note": (
-            "This report was produced by the dependency-light baseline generator. "
-            "It is suitable for early engineering review, not final privacy certification."
+            "This report is suitable for early engineering review and statistical validation, "
+            "not final privacy certification."
         ),
     }
 
