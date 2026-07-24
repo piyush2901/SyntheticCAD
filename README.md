@@ -1,54 +1,70 @@
 # SyntheticCAD
 
-SyntheticCAD is an offline, Windows-oriented prototype for turning real CAD
-calls-for-service CSV exports into shareable synthetic datasets. The goal is to
-help agencies share realistic research data without exposing real people, real
-incidents, or address-level records.
+SyntheticCAD is a local-first Windows prototype for turning sensitive public
+safety or service datasets into synthetic research data. It helps an agency
+answer two separate questions:
 
-This repository currently contains the core data pipeline:
+1. **Utility:** Does the synthetic output preserve useful statistical patterns?
+2. **Privacy evidence:** Did source identifiers, exact rows, or rare combinations
+   survive into the output?
 
-- CSV profiling and field-mapping guidance
-- Event/unit grain diagnostics
-- SDV-based synthetic CAD generation
-- Fast empirical pattern-matching synthesis for large local datasets
-- Baseline fallback for engineering smoke tests
-- Executive validation dashboard
-- Researcher-oriented validation JSON
-- Synthetic CSV export with disclaimer language
+The application runs on the user's computer. The current pipeline does not send
+source data to Google, Modal, SDV services, or another cloud endpoint.
 
-The current implementation uses `pandas`, `numpy`, and SDV. SDV remains the
-primary library-backed synthesis path because it supports multi-table relational
-synthesis for event/unit CAD structures. The repo also includes a faster
-`pattern` method for large prototype runs where the immediate goal is matching
-operational statistics.
+The implementation decisions and mentor-feedback checklist are documented in
+[`docs/MVP_METHOD_AND_MENTOR_FEEDBACK.md`](docs/MVP_METHOD_AND_MENTOR_FEEDBACK.md).
+
+## Current MVP
+
+The guided local application provides:
+
+- CSV selection with a native Windows file picker
+- Local field profiling and reviewable sensitive-field classifications
+- Selective attribute modeling
+- Direct-identifier exclusion before model fitting
+- Synthetic identifier replacement after sampling
+- Rare-category grouping before fitting
+- SDV single-table synthesis
+- Automatic repair of learned deterministic relationships, such as diagnosis
+  code/description mappings and admission date + length of stay = discharge date
+- Calibrated local runtime estimates
+- A Basic Overview and Advanced Evidence dashboard
+- Synthetic CSV, SDV metadata, validation JSON, and sharing disclaimer exports
+
+The primary user-facing methods are:
+
+- **SDV Gaussian Copula:** recommended local default; fast, classical statistical
+  modeling
+- **SDV CTGAN:** advanced neural option; substantially slower and dependent on
+  training epochs and available hardware
+
+The older baseline and empirical pattern-matching prototypes are not exposed in
+the Windows workflow. The existing CAD-specific `conditional` and relational
+`sdv` CLI paths remain available for engineering work on event/unit datasets.
 
 ## Repository Layout
 
 ```text
-syntheticcad/           Core Python package
-configs/mappings/       Reusable field mappings for known public datasets
-datasets/               Local data staging folder; raw data is not committed
-outputs/                Generated reports and synthetic exports; not committed
-requirements.txt        Python dependencies
+syntheticcad/           Python package and local application
+tests/                  Privacy, constraint, runtime, and dashboard tests
+configs/mappings/       Reusable CAD mappings
+datasets/               Local dataset staging; data is ignored by Git
+outputs/                Generated runs; ignored by Git
+docs/                   Public-safe static dashboard demo
+SyntheticCAD.spec       PyInstaller Windows package definition
 ```
 
 ## Dataset Storage
 
-Raw datasets are intentionally excluded from GitHub. Team members should download
-the shared dataset from the project cloud storage [OneDrive link](https://1drv.ms/f/c/82fa650f732dbbc5/IgCTnXLhMmZ-R6fY1d6udl-_AX1Kdjvg1DGSyYg052eYfA0?e=CpC7zX).
-
-Example local path for the Seattle sample dataset:
-
-```text
-datasets/Call_Data_20260619.csv
-```
-
-The same file can also be referenced from any other local path when running the
-CLI. For details, see `datasets/README.md`.
+Raw datasets are not stored in GitHub. Team members can use the shared project
+[OneDrive folder](https://1drv.ms/f/c/82fa650f732dbbc5/IgCTnXLhMmZ-R6fY1d6udl-_AX1Kdjvg1DGSyYg052eYfA0?e=CpC7zX)
+or any other approved storage location, then select the downloaded CSV from the
+application. The file does not need to be copied into a particular repository
+subfolder.
 
 ## Setup On Windows
 
-From a PowerShell terminal:
+From PowerShell:
 
 ```powershell
 python -m venv .venv
@@ -57,116 +73,154 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-If PowerShell blocks virtual environment activation, run:
+Start the local application:
 
 ```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+python -m syntheticcad.web_app
 ```
 
-Then activate the environment again.
+SyntheticCAD opens the local interface in the default browser. It starts at
+`http://127.0.0.1:8765/` and automatically selects the next available local port
+when that port is already in use.
 
-## Run The Seattle Public CAD Example
+## Guided Workflow
 
-Place the Seattle CSV at any local path. The examples below assume:
+1. Choose a CSV and profile its fields.
+2. Review the suggested roles: direct identifier, quasi-identifier, sensitive
+   attribute, record identifier, or model attribute.
+3. Select only the fields needed for the research use case.
+4. Review the modeled-field count, output row count, method, and runtime range.
+5. Generate locally and open the Basic Overview.
+6. Inspect privacy evidence, distributions, random samples, and Advanced Evidence
+   before downloading or sharing the synthetic CSV.
+
+Direct identifiers can remain selected for the output, but they are excluded
+from model fitting and regenerated as explicit synthetic aliases. The dashboard
+never embeds direct source identifier values.
+
+## Command Line
+
+Profile sensitive fields:
+
+```powershell
+python -m syntheticcad.cli sensitive-profile C:\path\data.csv --out outputs\profile.json
+```
+
+Run the recommended SDV single-table pipeline on all fields:
+
+```powershell
+python -m syntheticcad.cli synthesize-table C:\path\data.csv --out-dir outputs\sdv_run
+```
+
+Model selected fields only:
+
+```powershell
+python -m syntheticcad.cli synthesize-table C:\path\data.csv `
+  --columns "age,race,sex,offense,offense_date" `
+  --method gaussian_copula `
+  --out-dir outputs\selected_run
+```
+
+The CTGAN option is:
+
+```powershell
+python -m syntheticcad.cli synthesize-table C:\path\data.csv `
+  --method ctgan --ctgan-epochs 100 --out-dir outputs\ctgan_run
+```
+
+## Measured Local Runs
+
+Measurements below were recorded on the current development computer on
+2026-07-24. They are calibration points, not guarantees.
+
+| Dataset/run | Source rows | Modeled fields | Training | Total pipeline | SDV quality |
+|---|---:|---:|---:|---:|---:|
+| Fictitious victim, Gaussian Copula | 20,000 | 5 | 7.1 sec | 30.0 sec | 0.988 |
+| Victim three-seed stability check | 20,000 | 5 | 3 seeds | 56.0 sec | 0.9875-0.9881 |
+| Fictitious hospital, Gaussian Copula | 49,981 | 12 | 24.1 sec | 56.3 sec | 0.991 |
+| Victim CTGAN smoke test | 2,000 | 5 | 5 epochs / 21.4 sec | 34.6 sec | 0.726 |
+
+The five-epoch CTGAN run only verifies that the implementation executes. It is
+intentionally undertrained and is not evidence that CTGAN is better than the
+Gaussian Copula result. CTGAN runtime grows with rows, selected fields, and
+epochs; the application shows a wider estimate before the run.
+
+## Windows Package
+
+Install the packaging dependency and build the on-directory package:
+
+```powershell
+python -m pip install -r requirements-package.txt
+python -m PyInstaller --noconfirm SyntheticCAD.spec
+```
+
+The executable is written to:
 
 ```text
-datasets/Call_Data_20260619.csv
+dist\SyntheticCAD\SyntheticCAD.exe
 ```
 
-Profile the full file:
+The packaged app stores generated runs under
+`%LOCALAPPDATA%\SyntheticCAD\outputs`. The entire `dist\SyntheticCAD` folder must
+be distributed together; the executable is not a standalone one-file build.
+The current Windows folder is approximately 0.55 GB because SDV and its CPU
+modeling dependencies are bundled. The app opens in a few seconds; the first
+synthesis in a new session may spend about half a minute loading those
+dependencies before fitting begins.
+
+## Validation Evidence
+
+The dashboard reports:
+
+- SDV Column Shapes and Column Pair Trends
+- KS statistics for numeric and date fields
+- Total variation distance for categorical fields
+- Real and synthetic distributions
+- Exact source identifier value and identity-combination overlap
+- Exact modeled-row overlap
+- Rare-combination exposure
+- Distance-to-closest-record benchmark against a real holdout
+- Nearest-neighbor distance ratio
+- Inferred deterministic constraints and applied repairs
+- Runtime by fit, sample, and evaluation stage
+- A clear list of supported and unsupported claims
+
+The Basic Overview uses a common gap scale for triage:
+
+- `<= 0.10`: green
+- `0.10` to `< 0.50`: review
+- `>= 0.50`: high
+
+These colors organize review; they are not a universal acceptance standard.
+Field-specific targets should be agreed with the agency and researcher before a
+production release.
+
+## Privacy Boundary
+
+This MVP provides empirical privacy screens, not a formal privacy proof. The
+Community SDV synthesizers used here do not provide a differential privacy
+epsilon. A result with strong fidelity can still carry linkage risk.
+
+The application therefore does **not** claim:
+
+- zero re-identification risk
+- formal differential privacy
+- automatic readiness to share
+- preservation of repeated-person relationships in a single-table model
+- protection against every agency-specific linkage field
+
+Closed agency data should remain inside the agency environment. A safer
+engagement model is for the agency to run SyntheticCAD locally and share only
+the synthetic output or validation report after internal privacy review.
+
+## Tests
+
+Run:
 
 ```powershell
-python -m syntheticcad.cli profile datasets\Call_Data_20260619.csv --out-dir outputs\seattle_2025_profile
+python -m unittest discover -v
 ```
 
-Generate the synthetic dataset using the checked-in Seattle mapping and the fast
-pattern-matching method:
-
-```powershell
-python -m syntheticcad.cli synthesize datasets\Call_Data_20260619.csv --mapping configs\mappings\seattle_2025_mvp.json --out-dir outputs\seattle_pattern_full_run --method pattern
-```
-
-The `synthesize` command uses SDV by default. The `pattern` method is faster and
-usually matches the visible operational statistics more closely because it uses
-event/unit templates, new IDs, timestamp randomization, paired coordinate jitter,
-and address-like location replacement. It is useful for full-file MVP demos, but
-it should be documented separately from SDV because it is not a formal privacy
-model.
-
-For fast smoke tests with the simplest dependency-light generator, run:
-
-```powershell
-python -m syntheticcad.cli synthesize datasets\Call_Data_20260619.csv --mapping configs\mappings\seattle_2025_mvp.json --out-dir outputs\baseline_run --method baseline
-```
-
-Open the executive dashboard:
-
-```text
-outputs/seattle_pattern_full_run/executive_dashboard.html
-```
-
-Generated outputs include:
-
-- `synthetic_cad.csv`
-- `validation_report.json`
-- `executive_dashboard.html`
-- `disclaimer.txt`
-
-## Public Demo Dashboard
-
-This repository includes a static GitHub Pages demo in `docs/index.html`. It is
-generated from the public Seattle sample workflow and is intended only as a
-shareable visual demonstration of the validation dashboard.
-
-To publish it from GitHub:
-
-1. Open the repository on GitHub.
-2. Go to **Settings** > **Pages**.
-3. Set **Source** to **Deploy from a branch**.
-4. Select the `main` branch and the `/docs` folder.
-5. Save the settings.
-
-Do not place raw datasets, closed agency exports, or large synthetic CSV files in
-`docs/`. The live demo should contain only static, public-safe artifacts.
-
-## Run The Local Windows Prototype
-
-Start the local browser app from PowerShell:
-
-```powershell
-python -m syntheticcad.web_app --host 127.0.0.1 --port 8765
-```
-
-Then open:
-
-```text
-http://127.0.0.1:8765/
-```
-
-The prototype runs entirely on the local machine. It accepts a CSV file path,
-mapping JSON path, synthesis method, row limit, seed, and output folder. Use
-`pattern` for the fastest full-file MVP run, `sdv` for library-backed synthesis
-checks, and `baseline` for the simplest smoke tests.
-
-## Current Boundaries
-
-This is not yet a final privacy certification workflow. SDV is the strongest
-library-backed path for the PRD, the `pattern` method is the fastest current
-full-file demo path, and the baseline generator remains available for
-engineering smoke tests. The final product should still add privacy risk tests
-before any real agency data is shared.
-
-The Seattle mapping intentionally uses `Dispatch Neighborhood` instead of
-`Dispatch Address` as the location field. Address-level fields should generally
-be excluded from synthetic exports unless there is a clear privacy-reviewed need.
-
-## Mentor Review Targets
-
-The most useful early review areas are:
-
-- Does the field mapping reflect real CAD export terminology?
-- Does the event/unit diagnostic catch the one-to-many structure correctly?
-- Does the executive dashboard answer what an agency leader needs to know?
-- Which fields should always be excluded from export by default?
-- What validation evidence would make the project credible to researchers and
-  agency legal/compliance teams?
+The current tests cover field-role precedence, identifier replacement, datetime
+protection during rare-value grouping, inferred relationship repair, runtime
+scaling, and exclusion of identifier values from generated dashboards.
