@@ -1,7 +1,12 @@
 """Synthetic CAD data generation.
 
-SDV is the primary generator for MVP synthesis. The dependency-light baseline
-generator remains available for smoke tests and fallback development runs.
+The module contains three generations of the prototype:
+
+* ``conditional`` is the fast, domain-specific MVP engine. It models CAD
+  events and units with conditional distributions and constraints, rather than
+  replaying complete source rows.
+* ``sdv`` is the library-backed relational experiment.
+* ``baseline`` and ``pattern`` remain available for comparison and smoke tests.
 """
 
 from __future__ import annotations
@@ -21,6 +26,8 @@ from syntheticcad.schema import EVENT_LEVEL_FIELDS, SyntheticCADMapping, UNIT_LE
 EVENT_TABLE_NAME = "events"
 UNIT_TABLE_NAME = "units"
 UNIT_ROW_ID_COLUMN = "_syntheticcad_unit_row_id"
+RARE_CATEGORY_LABEL = "OTHER_RARE"
+MISSING_CATEGORY_LABEL = "__SYNTH_MISSING__"
 
 
 @dataclass(frozen=True)
@@ -97,6 +104,363 @@ def _sample_generic(series: pd.Series, count: int, rng: np.random.Generator) -> 
     if numeric_rate >= 0.9 and not low_cardinality:
         return _sample_numeric(series, count, rng)
     return _choice_from_series(series, count, rng)
+
+
+def _is_missing_scalar(value: Any) -> bool:
+    result = pd.isna(value)
+    return bool(result) if np.isscalar(result) else False
+
+
+def _bucket_categories(series: pd.Series, rare_threshold: int) -> pd.Series:
+    """Collapse low-frequency categories before they are used as model inputs."""
+
+    values = series.astype(object).map(
+        lambda value: MISSING_CATEGORY_LABEL if _is_missing_scalar(value) else value
+    )
+    counts = values.value_counts(dropna=False)
+    rare_values = {
+        value
+        for value, count in counts.items()
+        if value != MISSING_CATEGORY_LABEL and int(count) < rare_threshold
+    }
+    return values.map(
+        lambda value: RARE_CATEGORY_LABEL if value in rare_values else value
+    )
+
+
+def _restore_category_missing(value: Any) -> Any:
+    return np.nan if value == MISSING_CATEGORY_LABEL else value
+
+
+def _sample_bucketed_values(
+    values: pd.Series,
+    count: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    if count <= 0:
+        return np.array([], dtype=object)
+    bucketed = values.astype(object).dropna()
+    if bucketed.empty:
+        return np.array([np.nan] * count, dtype=object)
+    distribution = bucketed.value_counts(dropna=False)
+    sampled = rng.choice(
+        distribution.index.to_numpy(dtype=object),
+        size=count,
+        p=(distribution / distribution.sum()).to_numpy(),
+    )
+    return np.asarray([_restore_category_missing(value) for value in sampled], dtype=object)
+
+
+def _parent_key(values: tuple[Any, ...]) -> tuple[Any, ...]:
+    return tuple(
+        MISSING_CATEGORY_LABEL if _is_missing_scalar(value) else value
+        for value in values
+    )
+
+
+def _group_positions(frame: pd.DataFrame) -> dict[tuple[Any, ...], np.ndarray]:
+    """Build grouped row positions using pandas' vectorized grouping path."""
+
+    if frame.empty:
+        return {}
+    clean = frame.reset_index(drop=True)
+    columns = list(clean.columns)
+    grouped = clean.groupby(columns, dropna=False, sort=False).indices
+    normalized: dict[tuple[Any, ...], np.ndarray] = {}
+    for key, positions in grouped.items():
+        normalized_key = (key,) if len(columns) == 1 else tuple(key)
+        normalized[normalized_key] = np.asarray(positions, dtype=int)
+    return normalized
+
+
+def _conditioned_sample(
+    source_values: pd.Series,
+    source_parents: pd.DataFrame,
+    target_parents: pd.DataFrame,
+    count: int,
+    rng: np.random.Generator,
+    rare_threshold: int = 5,
+    minimum_group_size: int = 25,
+) -> np.ndarray:
+    """Sample a field conditionally, with backoff for sparse combinations."""
+
+    if count <= 0:
+        return np.array([], dtype=object)
+    source_values = source_values.reset_index(drop=True)
+    target_parents = target_parents.reset_index(drop=True)
+    if source_parents.empty or target_parents.empty:
+        return _sample_bucketed_values(
+            _bucket_categories(source_values, rare_threshold), count, rng
+        )
+
+    source_parents = source_parents.reset_index(drop=True)
+    source_bucket = _bucket_categories(source_values, rare_threshold)
+    parent_columns = list(source_parents.columns)
+    exact_groups = _group_positions(source_parents)
+    first_groups = _group_positions(source_parents[[parent_columns[0]]])
+    global_indices = np.arange(source_values.shape[0], dtype=int)
+    target_groups = _group_positions(target_parents)
+
+    output = np.empty(count, dtype=object)
+    for key, positions in target_groups.items():
+        candidate = exact_groups.get(key)
+        if candidate is None or len(candidate) < minimum_group_size:
+            candidate = first_groups.get(key[:1])
+        if candidate is None or len(candidate) < minimum_group_size:
+            candidate = global_indices
+        sampled = _sample_bucketed_values(
+            source_bucket.iloc[np.asarray(candidate, dtype=int)],
+            len(positions),
+            rng,
+        )
+        output[np.asarray(positions, dtype=int)] = sampled
+    return output
+
+
+def _sample_numeric_distribution(
+    values: pd.Series,
+    count: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    numeric = pd.to_numeric(values, errors="coerce").dropna()
+    if count <= 0:
+        return np.array([], dtype=float)
+    if numeric.empty:
+        return np.zeros(count, dtype=float)
+
+    array = numeric.to_numpy(dtype=float)
+    lower = float(np.quantile(array, 0.005))
+    upper = float(np.quantile(array, 0.995))
+    mean = float(array.mean())
+    std = max(float(array.std()), (upper - lower) / 12, 0.01)
+    sampled = rng.normal(mean, std, size=count)
+    return np.clip(sampled, lower, upper)
+
+
+def _conditioned_numeric_sample(
+    source_values: pd.Series,
+    source_parents: pd.DataFrame,
+    target_parents: pd.DataFrame,
+    count: int,
+    rng: np.random.Generator,
+    minimum_group_size: int = 25,
+) -> np.ndarray:
+    """Sample numeric values from conditional parametric distributions."""
+
+    if count <= 0:
+        return np.array([], dtype=float)
+    if source_parents.empty or target_parents.empty:
+        return _sample_numeric_distribution(source_values, count, rng)
+
+    source_parents = source_parents.reset_index(drop=True)
+    target_parents = target_parents.reset_index(drop=True)
+    parent_columns = list(source_parents.columns)
+    exact_groups = _group_positions(source_parents)
+    first_groups = _group_positions(source_parents[[parent_columns[0]]])
+    global_indices = np.arange(source_values.shape[0], dtype=int)
+    target_groups = _group_positions(target_parents)
+
+    output = np.empty(count, dtype=float)
+    for key, positions in target_groups.items():
+        candidate = exact_groups.get(key)
+        if candidate is None or len(candidate) < minimum_group_size:
+            candidate = first_groups.get(key[:1])
+        if candidate is None or len(candidate) < minimum_group_size:
+            candidate = global_indices
+        sampled = _sample_numeric_distribution(
+            source_values.iloc[np.asarray(candidate, dtype=int)],
+            len(positions),
+            rng,
+        )
+        output[np.asarray(positions, dtype=int)] = sampled
+    return output
+
+
+def _is_continuous_numeric(series: pd.Series) -> bool:
+    non_null = series.dropna()
+    if non_null.empty:
+        return False
+    numeric = pd.to_numeric(non_null, errors="coerce")
+    return bool(numeric.notna().mean() >= 0.95 and non_null.nunique() > 12)
+
+
+def _sample_event_datetimes(
+    events: pd.DataFrame,
+    mapping: SyntheticCADMapping,
+    target_call_types: pd.Series | None,
+    count: int,
+    rng: np.random.Generator,
+    rare_threshold: int,
+) -> pd.Series:
+    """Generate calendar-valid timestamps from month/day/hour distributions."""
+
+    column = mapping.call_received_datetime
+    if not column or column not in events.columns:
+        return pd.Series([pd.NaT] * count)
+    parsed = parse_datetime(events[column])
+    valid = parsed.notna()
+    if not valid.any():
+        return pd.Series([pd.NaT] * count)
+
+    valid_times = parsed[valid].reset_index(drop=True)
+    source_patterns = pd.DataFrame(
+        {
+            "pattern": valid_times.map(
+                lambda value: f"{value.month}|{value.dayofweek}|{value.hour}"
+            )
+        }
+    )
+    source_type = None
+    if mapping.call_type and mapping.call_type in events.columns:
+        source_type = _bucket_categories(events.loc[valid, mapping.call_type], rare_threshold)
+        source_type = source_type.reset_index(drop=True)
+
+    if source_type is not None and target_call_types is not None:
+        source_parents = pd.DataFrame({"call_type": source_type})
+        target_parents = pd.DataFrame(
+            {"call_type": _bucket_categories(target_call_types, rare_threshold)}
+        )
+        sampled_patterns = _conditioned_sample(
+            source_patterns["pattern"],
+            source_parents,
+            target_parents,
+            count,
+            rng,
+            rare_threshold=1,
+            minimum_group_size=20,
+        )
+    else:
+        sampled_patterns = _sample_bucketed_values(
+            source_patterns["pattern"], count, rng
+        )
+
+    start_day = valid_times.min().normalize()
+    end_day = valid_times.max().normalize()
+    calendar = pd.date_range(start_day, end_day, freq="D")
+    calendar_lookup: dict[tuple[int, int], np.ndarray] = {}
+    for day in calendar:
+        key = (day.month, day.dayofweek)
+        calendar_lookup.setdefault(key, []).append(day)
+    calendar_lookup = {
+        key: np.asarray(days, dtype="datetime64[ns]")
+        for key, days in calendar_lookup.items()
+    }
+    all_days = np.asarray(calendar, dtype="datetime64[ns]")
+
+    output_days: list[np.datetime64] = []
+    hours: list[int] = []
+    for pattern in sampled_patterns:
+        try:
+            month, day_of_week, hour = (int(part) for part in str(pattern).split("|"))
+        except ValueError:
+            month, day_of_week, hour = 1, 0, 0
+        candidates = calendar_lookup.get((month, day_of_week), all_days)
+        output_days.append(rng.choice(candidates))
+        hours.append(hour)
+
+    seconds = rng.integers(0, 3600, size=count)
+    generated = pd.Series(pd.to_datetime(output_days)) + pd.to_timedelta(
+        np.asarray(hours) * 3600 + seconds,
+        unit="s",
+    )
+    missing_rate = float((~valid).mean())
+    if missing_rate:
+        missing = rng.random(count) < missing_rate
+        generated.loc[missing] = pd.NaT
+    return generated.dt.round("s")
+
+
+def _valid_coordinate_mask(latitude: pd.Series, longitude: pd.Series) -> pd.Series:
+    lat = pd.to_numeric(latitude, errors="coerce")
+    lon = pd.to_numeric(longitude, errors="coerce")
+    valid = lat.notna() & lon.notna()
+    valid &= np.isfinite(lat) & np.isfinite(lon)
+    valid &= lat.between(-90, 90) & lon.between(-180, 180)
+    valid &= ~((lat.abs() < 1e-9) & (lon.abs() < 1e-9))
+    valid &= ~(lat.eq(-1) & lon.eq(0))
+    return valid
+
+
+def _sample_geographic_cells(
+    events: pd.DataFrame,
+    mapping: SyntheticCADMapping,
+    target_call_types: pd.Series | None,
+    count: int,
+    rng: np.random.Generator,
+    rare_threshold: int,
+) -> tuple[pd.Series, pd.Series]:
+    """Sample within coarse spatial cells instead of replaying exact points."""
+
+    if (
+        not mapping.latitude
+        or not mapping.longitude
+        or mapping.latitude not in events.columns
+        or mapping.longitude not in events.columns
+    ):
+        return pd.Series([np.nan] * count), pd.Series([np.nan] * count)
+
+    valid = _valid_coordinate_mask(events[mapping.latitude], events[mapping.longitude])
+    if not valid.any():
+        return pd.Series([np.nan] * count), pd.Series([np.nan] * count)
+
+    grid_size = 0.01
+    source = pd.DataFrame(
+        {
+            "latitude": pd.to_numeric(events.loc[valid, mapping.latitude], errors="coerce"),
+            "longitude": pd.to_numeric(events.loc[valid, mapping.longitude], errors="coerce"),
+        }
+    ).reset_index(drop=True)
+    source["lat_cell"] = np.floor(source["latitude"] / grid_size).astype(int)
+    source["lon_cell"] = np.floor(source["longitude"] / grid_size).astype(int)
+    source_cells = source.groupby(["lat_cell", "lon_cell"], sort=False).size()
+    global_cells = source_cells.index.to_list()
+    global_weights = (source_cells / source_cells.sum()).to_numpy()
+
+    type_cells: dict[Any, tuple[list[tuple[int, int]], np.ndarray]] = {}
+    if mapping.call_type and mapping.call_type in events.columns:
+        source_types = _bucket_categories(
+            events.loc[valid, mapping.call_type], rare_threshold
+        ).reset_index(drop=True)
+        for value, positions in source_types.groupby(source_types, dropna=False).groups.items():
+            subset = source.iloc[np.asarray(list(positions), dtype=int)]
+            counts = subset.groupby(["lat_cell", "lon_cell"], sort=False).size()
+            if counts.sum() >= 50:
+                type_cells[value] = (
+                    counts.index.to_list(),
+                    (counts / counts.sum()).to_numpy(),
+                )
+
+    sampled_lat = np.empty(count, dtype=float)
+    sampled_lon = np.empty(count, dtype=float)
+    if target_call_types is None:
+        target_groups = {None: list(range(count))}
+    else:
+        target_buckets = _bucket_categories(target_call_types, rare_threshold)
+        target_groups = {
+            value: list(positions)
+            for value, positions in target_buckets.groupby(target_buckets, dropna=False).groups.items()
+        }
+
+    for value, positions in target_groups.items():
+        cell_list, weights = type_cells.get(value, (global_cells, global_weights))
+        selected = rng.choice(len(cell_list), size=len(positions), p=weights)
+        cells = [cell_list[index] for index in selected]
+        positions_array = np.asarray(list(positions), dtype=int)
+        sampled_lat[positions_array] = np.asarray(
+            [lat_cell * grid_size + rng.random() * grid_size for lat_cell, _ in cells]
+        )
+        sampled_lon[positions_array] = np.asarray(
+            [lon_cell * grid_size + rng.random() * grid_size for _, lon_cell in cells]
+        )
+
+    sampled_lat = np.clip(sampled_lat, source["latitude"].min(), source["latitude"].max())
+    sampled_lon = np.clip(sampled_lon, source["longitude"].min(), source["longitude"].max())
+    missing_rate = float((~valid).mean())
+    if missing_rate:
+        missing = rng.random(count) < missing_rate
+        sampled_lat[missing] = np.nan
+        sampled_lon[missing] = np.nan
+    return pd.Series(sampled_lat), pd.Series(sampled_lon)
 
 
 def _synthetic_timestamps(
@@ -231,6 +595,503 @@ def _sample_unit_counts(
         return sampled
 
     return rng.choice(event_sizes.to_numpy(), size=synthetic_events.shape[0], replace=True).astype(int)
+
+
+def _sample_unit_counts_conditional(
+    df: pd.DataFrame,
+    events: pd.DataFrame,
+    mapping: SyntheticCADMapping,
+    target_call_types: pd.Series | None,
+    count: int,
+    rng: np.random.Generator,
+    rare_threshold: int,
+) -> np.ndarray:
+    """Sample one-to-many sizes from call-type-specific empirical distributions."""
+
+    if count <= 0:
+        return np.array([], dtype=int)
+    if not mapping.event_id or mapping.event_id not in df.columns:
+        return np.ones(count, dtype=int)
+
+    source = df[df[mapping.event_id].notna()]
+    event_sizes = source.groupby(mapping.event_id, sort=False).size()
+    if event_sizes.empty:
+        return np.ones(count, dtype=int)
+
+    source_event_ids = events[mapping.event_id]
+    aligned_sizes = event_sizes.reindex(source_event_ids).fillna(1).to_numpy(dtype=int)
+    type_to_sizes: dict[Any, np.ndarray] = {}
+    if mapping.call_type and mapping.call_type in events.columns:
+        event_types = _bucket_categories(events[mapping.call_type], rare_threshold).reset_index(drop=True)
+        for value, positions in event_types.groupby(event_types, dropna=False).groups.items():
+            type_to_sizes[value] = aligned_sizes[np.asarray(list(positions), dtype=int)]
+
+    all_sizes = aligned_sizes
+    if target_call_types is None:
+        sampled = rng.choice(all_sizes, size=count, replace=True)
+    else:
+        sampled = np.empty(count, dtype=int)
+        target_types = _bucket_categories(target_call_types, rare_threshold)
+        for value, positions in target_types.groupby(target_types, dropna=False).groups.items():
+            pool = type_to_sizes.get(value, all_sizes)
+            sampled[np.asarray(list(positions), dtype=int)] = rng.choice(
+                pool,
+                size=len(positions),
+                replace=True,
+            )
+    return np.maximum(sampled.astype(int), 1)
+
+
+def _adjust_counts_to_total(
+    counts: np.ndarray,
+    target_total: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Keep at least one row per event while matching the requested row total."""
+
+    adjusted = np.maximum(np.asarray(counts, dtype=int), 1)
+    if adjusted.size == 0:
+        return adjusted
+    difference = int(target_total - adjusted.sum())
+    if difference > 0:
+        positions = rng.integers(0, adjusted.size, size=difference)
+        np.add.at(adjusted, positions, 1)
+        return adjusted
+
+    remaining = -difference
+    while remaining:
+        eligible = np.flatnonzero(adjusted > 1)
+        if eligible.size == 0:
+            break
+        take = min(remaining, max(eligible.size * 4, 1))
+        positions = rng.choice(eligible, size=take, replace=True)
+        for position in positions:
+            if adjusted[position] > 1:
+                adjusted[position] -= 1
+                remaining -= 1
+                if remaining == 0:
+                    break
+    return adjusted
+
+
+def _sample_positive_duration(
+    durations: pd.Series,
+    count: int,
+    fallback_minutes: float,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Sample a smooth positive duration model without replaying source values."""
+
+    values = pd.to_numeric(durations, errors="coerce")
+    values = values[(values >= 0) & (values <= 24 * 60)].dropna()
+    if values.empty:
+        return np.full(count, fallback_minutes, dtype=float)
+    sorted_values = np.sort(values.to_numpy(dtype=float))
+    if sorted_values.size == 1:
+        noise = max(abs(float(sorted_values[0])) * 0.05, 0.25)
+        return np.clip(
+            sorted_values[0] + rng.normal(0, noise, size=count),
+            0,
+            24 * 60,
+        )
+
+    # Interpolation preserves a heavy-tailed response-time shape without
+    # copying complete source rows or forcing a single Gaussian assumption.
+    positions = rng.random(count) * (sorted_values.size - 1)
+    lower_indices = np.floor(positions).astype(int)
+    upper_indices = np.ceil(positions).astype(int)
+    fraction = positions - lower_indices
+    sampled = (
+        sorted_values[lower_indices] * (1 - fraction)
+        + sorted_values[upper_indices] * fraction
+    )
+    gaps = np.diff(sorted_values)
+    noise = max(float(np.median(gaps[gaps > 0])) * 0.1, 0.02) if np.any(gaps > 0) else 0.02
+    sampled += rng.normal(0, noise, size=count)
+    return np.clip(sampled, 0, 24 * 60)
+
+
+def _sample_duration_conditioned(
+    df: pd.DataFrame,
+    start_column: str | None,
+    end_column: str | None,
+    source_context: pd.Series | None,
+    target_context: pd.Series | None,
+    count: int,
+    fallback_minutes: float,
+    rng: np.random.Generator,
+    rare_threshold: int,
+) -> np.ndarray:
+    if not start_column or not end_column:
+        return np.full(count, fallback_minutes, dtype=float)
+    if start_column not in df.columns or end_column not in df.columns:
+        return np.full(count, fallback_minutes, dtype=float)
+
+    start = parse_datetime(df[start_column])
+    end = parse_datetime(df[end_column])
+    duration = (end - start).dt.total_seconds() / 60
+    valid = duration.notna() & duration.ge(0) & duration.le(24 * 60)
+    if not valid.any():
+        return np.full(count, fallback_minutes, dtype=float)
+    values = duration.loc[valid].reset_index(drop=True)
+    if source_context is None or target_context is None:
+        sampled = _sample_positive_duration(values, count, fallback_minutes, rng)
+    else:
+        source_parents = pd.DataFrame(
+            {"call_type": _bucket_categories(source_context.loc[valid], rare_threshold).reset_index(drop=True)}
+        )
+        target_parents = pd.DataFrame(
+            {"call_type": _bucket_categories(target_context, rare_threshold).reset_index(drop=True)}
+        )
+        target_groups: dict[Any, list[int]] = {}
+        for index, value in enumerate(target_parents["call_type"]):
+            target_groups.setdefault(value, []).append(index)
+        source_groups: dict[Any, list[int]] = {}
+        for index, value in enumerate(source_parents["call_type"]):
+            source_groups.setdefault(value, []).append(index)
+        sampled = np.empty(count, dtype=float)
+        all_indices = np.arange(values.shape[0], dtype=int)
+        for value, positions in target_groups.items():
+            candidate = source_groups.get(value, [])
+            if len(candidate) < 20:
+                candidate = all_indices
+            sampled[np.asarray(positions, dtype=int)] = _sample_positive_duration(
+                values.iloc[np.asarray(candidate, dtype=int)],
+                len(positions),
+                fallback_minutes,
+                rng,
+            )
+
+    source_valid_rate = float(valid.mean())
+    if source_valid_rate < 1:
+        sampled[rng.random(count) > source_valid_rate] = np.nan
+    return sampled
+
+
+def _generated_unit_identifiers(
+    df: pd.DataFrame,
+    mapping: SyntheticCADMapping,
+    count: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    source_pool = 25
+    if mapping.unit_id and mapping.unit_id in df.columns:
+        source_pool = int(df[mapping.unit_id].nunique(dropna=True))
+    pool_size = min(max(source_pool, 25), 500)
+    return np.asarray(
+        [f"UNIT-{value:05d}" for value in rng.integers(1, pool_size + 1, size=count)],
+        dtype=object,
+    )
+
+
+def synthesize_conditional(
+    df: pd.DataFrame,
+    mapping: SyntheticCADMapping,
+    event_count: int | None = None,
+    seed: int | None = 42,
+    rare_threshold: int = 5,
+) -> SynthesisResult:
+    """Generate CAD data with a fast conditional event/unit model.
+
+    The model is deliberately explicit instead of opaque: categorical event
+    fields are sampled conditionally on call type and event group, continuous
+    fields use bounded parametric distributions, time fields are reconstructed
+    from calendar and duration models, and coordinates are sampled inside
+    coarse spatial cells. No complete source row is copied into the output.
+    """
+
+    random = _rng(seed)
+    events = _build_event_table(df, mapping).reset_index(drop=True)
+    if events.empty:
+        raise ValueError("No event-level columns were available for synthesis.")
+
+    source_event_count = int(events.shape[0])
+    target_events = int(event_count or source_event_count)
+    target_events = max(target_events, 1)
+    generated_events = pd.DataFrame(index=range(target_events))
+
+    if mapping.event_id:
+        generated_events[mapping.event_id] = [
+            f"SYN-EVENT-{index:08d}" for index in range(1, target_events + 1)
+        ]
+
+    source_call_types: pd.Series | None = None
+    target_call_types: pd.Series | None = None
+    if mapping.call_type and mapping.call_type in events.columns:
+        source_call_types = _bucket_categories(events[mapping.call_type], rare_threshold)
+        target_call_types = pd.Series(
+            _sample_bucketed_values(source_call_types, target_events, random)
+        )
+        generated_events[mapping.call_type] = target_call_types
+
+    event_group_column = next(
+        (
+            column
+            for column in events.columns
+            if column != mapping.call_type and "event group" in column.lower()
+        ),
+        None,
+    )
+    if event_group_column:
+        source_parents = pd.DataFrame(
+            {"call_type": source_call_types}
+        ) if source_call_types is not None else pd.DataFrame()
+        target_parents = pd.DataFrame(
+            {"call_type": _bucket_categories(target_call_types, rare_threshold)}
+        ) if target_call_types is not None else pd.DataFrame()
+        generated_events[event_group_column] = _conditioned_sample(
+            events[event_group_column],
+            source_parents,
+            target_parents,
+            target_events,
+            random,
+            rare_threshold=rare_threshold,
+        )
+
+    parent_columns = []
+    if mapping.call_type and mapping.call_type in events.columns:
+        parent_columns.append(mapping.call_type)
+    if event_group_column and event_group_column in generated_events.columns:
+        parent_columns.append(event_group_column)
+
+    event_columns = [column for column in _mapped_event_columns(mapping) if column in events.columns]
+    if mapping.call_received_datetime:
+        generated_events[mapping.call_received_datetime] = _sample_event_datetimes(
+            events,
+            mapping,
+            target_call_types,
+            target_events,
+            random,
+            rare_threshold,
+        )
+
+    for column in event_columns:
+        if column in generated_events.columns:
+            continue
+        source_series = events[column]
+        source_parent_values = {
+            parent: _bucket_categories(events[parent], rare_threshold)
+            for parent in parent_columns
+            if parent in events.columns
+        }
+        target_parent_values = {
+            parent: _bucket_categories(generated_events[parent], rare_threshold)
+            for parent in parent_columns
+            if parent in generated_events.columns
+        }
+        source_parents = pd.DataFrame(source_parent_values)
+        target_parents = pd.DataFrame(target_parent_values)
+        if column == mapping.location and _is_address_like_column(column):
+            generated_events[column] = _synthetic_location_codes(
+                source_series,
+                target_events,
+                random,
+            )
+        elif column in {mapping.latitude, mapping.longitude}:
+            continue
+        elif _is_continuous_numeric(source_series):
+            sampled = _conditioned_numeric_sample(
+                source_series,
+                source_parents,
+                target_parents,
+                target_events,
+                random,
+            )
+            if _integer_like(source_series):
+                sampled = np.rint(sampled).astype(int)
+            generated_events[column] = sampled
+        else:
+            generated_events[column] = _conditioned_sample(
+                source_series,
+                source_parents,
+                target_parents,
+                target_events,
+                random,
+                rare_threshold=rare_threshold,
+            )
+
+    if mapping.latitude and mapping.longitude:
+        latitude, longitude = _sample_geographic_cells(
+            events,
+            mapping,
+            target_call_types,
+            target_events,
+            random,
+            rare_threshold,
+        )
+        generated_events[mapping.latitude] = latitude
+        generated_events[mapping.longitude] = longitude
+
+    if mapping.event_id and mapping.event_id in df.columns:
+        source_rows = int(df[mapping.event_id].notna().sum())
+        target_rows = (
+            source_rows
+            if event_count is None
+            else max(1, round(source_rows / max(source_event_count, 1) * target_events))
+        )
+    else:
+        target_rows = target_events
+
+    target_call_type_values = (
+        _bucket_categories(target_call_types, rare_threshold)
+        if target_call_types is not None
+        else None
+    )
+    unit_counts = _sample_unit_counts_conditional(
+        df,
+        events,
+        mapping,
+        target_call_type_values,
+        target_events,
+        random,
+        rare_threshold,
+    )
+    unit_counts = _adjust_counts_to_total(unit_counts, target_rows, random)
+    synthetic_rows = generated_events.iloc[
+        generated_events.index.repeat(unit_counts)
+    ].reset_index(drop=True)
+    row_count = int(synthetic_rows.shape[0])
+
+    source_unit_rows = df
+    source_context: pd.Series | None = None
+    target_context: pd.Series | None = None
+    if mapping.event_id and mapping.event_id in df.columns and target_call_type_values is not None:
+        event_type_lookup = pd.Series(
+            source_call_types.to_numpy(),
+            index=events[mapping.event_id].astype(object),
+        )
+        source_context = source_unit_rows[mapping.event_id].map(event_type_lookup)
+        target_context = pd.Series(np.repeat(target_call_type_values.to_numpy(), unit_counts))
+
+    unit_columns = [column for column in _mapped_unit_columns(mapping) if column in df.columns]
+    for column in unit_columns:
+        if column in {mapping.event_id, mapping.unit_id, mapping.dispatch_time, mapping.arrival_time, mapping.clearance_time}:
+            continue
+        if _is_continuous_numeric(df[column]):
+            source_parents = pd.DataFrame(
+                {"call_type": _bucket_categories(source_context, rare_threshold)}
+            ) if source_context is not None else pd.DataFrame()
+            target_parents = pd.DataFrame(
+                {"call_type": _bucket_categories(target_context, rare_threshold)}
+            ) if target_context is not None else pd.DataFrame()
+            synthetic_rows[column] = _conditioned_numeric_sample(
+                df[column], source_parents, target_parents, row_count, random
+            )
+        else:
+            source_parents = pd.DataFrame(
+                {"call_type": _bucket_categories(source_context, rare_threshold)}
+            ) if source_context is not None else pd.DataFrame()
+            target_parents = pd.DataFrame(
+                {"call_type": _bucket_categories(target_context, rare_threshold)}
+            ) if target_context is not None else pd.DataFrame()
+            synthetic_rows[column] = _conditioned_sample(
+                df[column], source_parents, target_parents, row_count, random,
+                rare_threshold=rare_threshold,
+            )
+
+    if mapping.unit_id:
+        synthetic_rows[mapping.unit_id] = _generated_unit_identifiers(
+            df, mapping, row_count, random
+        )
+
+    call_time = (
+        parse_datetime(synthetic_rows[mapping.call_received_datetime])
+        if mapping.call_received_datetime and mapping.call_received_datetime in synthetic_rows.columns
+        else None
+    )
+    if call_time is not None:
+        dispatch_delay = _sample_duration_conditioned(
+            df,
+            mapping.call_received_datetime,
+            mapping.dispatch_time,
+            source_context,
+            target_context,
+            row_count,
+            2.0,
+            random,
+            rare_threshold,
+        )
+        dispatch_time = call_time + pd.to_timedelta(dispatch_delay, unit="m")
+        if mapping.dispatch_time:
+            synthetic_rows[mapping.dispatch_time] = dispatch_time.dt.round("s")
+
+        response_delay = _sample_duration_conditioned(
+            df,
+            mapping.dispatch_time,
+            mapping.arrival_time,
+            source_context,
+            target_context,
+            row_count,
+            8.0,
+            random,
+            rare_threshold,
+        )
+        arrival_time = dispatch_time + pd.to_timedelta(response_delay, unit="m")
+        if mapping.arrival_time:
+            synthetic_rows[mapping.arrival_time] = arrival_time.dt.round("s")
+
+        service_duration = _sample_duration_conditioned(
+            df,
+            mapping.arrival_time,
+            mapping.clearance_time,
+            source_context,
+            target_context,
+            row_count,
+            45.0,
+            random,
+            rare_threshold,
+        )
+        if mapping.clearance_time:
+            synthetic_rows[mapping.clearance_time] = (
+                arrival_time + pd.to_timedelta(service_duration, unit="m")
+            ).dt.round("s")
+
+    output_columns = [column for column in df.columns if column in synthetic_rows.columns]
+    remaining_columns = [column for column in synthetic_rows.columns if column not in output_columns]
+    synthetic_rows = synthetic_rows[output_columns + remaining_columns]
+    return SynthesisResult(
+        dataframe=synthetic_rows,
+        method="conditional",
+        library_used="SyntheticCAD conditional CAD generator using pandas and NumPy.",
+        method_summary=(
+            "The conditional generator models event attributes with bounded conditional "
+            "distributions, collapses rare categories, reconstructs calendar-valid call "
+            "times and unit durations, samples unit counts by call type, creates new IDs, "
+            "and samples coordinates inside coarse spatial cells. It does not replay "
+            "complete source rows."
+        ),
+        details={
+            "offline_processing": True,
+            "source_event_count": source_event_count,
+            "target_event_count": target_events,
+            "source_row_count": int(df.shape[0]),
+            "target_row_count": int(target_rows),
+            "rare_category_threshold": rare_threshold,
+            "spatial_cell_size_degrees": 0.01,
+            "model_structure": [
+                "call_type -> event_group",
+                "call_type + event_group -> remaining event fields",
+                "call_type -> unit count and unit fields",
+                "call_type -> dispatch, response, and service duration distributions",
+                "month + day-of-week + hour -> generated call timestamp",
+            ],
+            "privacy_note": (
+                "This is a fast model-based generator, not a formal differential privacy "
+                "mechanism. The output must pass disclosure-risk screens before sharing."
+            ),
+        },
+    )
+
+
+def synthesize_conditional_result(
+    df: pd.DataFrame,
+    mapping: SyntheticCADMapping,
+    event_count: int | None = None,
+    seed: int | None = 42,
+) -> SynthesisResult:
+    """Compatibility wrapper for callers that name synthesis result functions."""
+
+    return synthesize_conditional(df, mapping, event_count=event_count, seed=seed)
 
 
 def _missing_key(value: Any) -> Any:

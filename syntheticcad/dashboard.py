@@ -432,6 +432,12 @@ def _render_dashboard(
   </section>
 
   <section class="section">
+    <h2>Privacy Review Checkpoint</h2>
+    <p class="subtitle">These screens look for obvious overlap or unusually close records. They support review; they do not certify that a dataset is impossible to re-identify.</p>
+    {_privacy_panel(validation_report)}
+  </section>
+
+  <section class="section">
     <h2>Operational Analytics</h2>
     <p class="subtitle">These views answer practical questions about frequency, rare categories, and whether the synthetic data keeps the same operational shape.</p>
     {_operational_analytics_panel(real_df, synthetic_df, mapping, geography_column, validation_report)}
@@ -539,6 +545,50 @@ def _statistical_snapshot(report: dict[str, Any]) -> str:
             "Relationship direction",
             _percent_value(correlation.get("same_direction_rate")),
             "Share of tested relationships with the same direction.",
+        ),
+    ]
+    return f'<div class="grid metrics">{"".join(cards)}</div>'
+
+
+def _privacy_panel(report: dict[str, Any]) -> str:
+    privacy = report.get("privacy_risk", {})
+    if not privacy.get("available"):
+        return '<div class="callout">Privacy screens were not available for this run. Review the separate privacy report before sharing the output.</div>'
+
+    exact = privacy.get("exact_quasi_identifier_match", {})
+    rare = privacy.get("rare_combination_exposure", {})
+    singleton = privacy.get("singleton_category_overlap", {})
+    call_type_singleton = singleton.get("Final Call Type", {})
+    dcr = privacy.get("distance_to_closest_record", {})
+    synthetic_dcr = dcr.get("holdout_to_synthetic", {}).get("median")
+    benchmark_dcr = dcr.get("holdout_to_real_train_benchmark", {}).get("median")
+    if synthetic_dcr is not None and benchmark_dcr:
+        dcr_ratio = synthetic_dcr / benchmark_dcr
+    else:
+        dcr_ratio = None
+
+    exact_rate = exact.get("synthetic_row_match_rate")
+    rare_rate = rare.get("real_rare_presence_rate")
+    cards = [
+        _metric_card(
+            "Full quasi-key overlap",
+            _percent_value(exact_rate),
+            "Synthetic rows sharing all checked quasi-fields with a real combination.",
+        ),
+        _metric_card(
+            "Rare combination presence",
+            _percent_value(rare_rate),
+            "Real combinations at or below the rare-category threshold found in synthetic data.",
+        ),
+        _metric_card(
+            "Matching call-type singletons",
+            str(call_type_singleton.get("same_singleton_count", "Not checked")),
+            "Singleton call types appearing as singletons in both datasets.",
+        ),
+        _metric_card(
+            "Closest-record benchmark",
+            f"{dcr_ratio:.2f}x" if dcr_ratio is not None else "Not checked",
+            "Synthetic-to-holdout distance compared with the real-to-real benchmark.",
         ),
     ]
     return f'<div class="grid metrics">{"".join(cards)}</div>'

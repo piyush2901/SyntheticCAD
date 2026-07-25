@@ -4,9 +4,14 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+tmp/
+build/
+dist/
+*.spec.bak
 
 # Virtual environments
 .venv/
+.packaging-venv/
 venv/
 env/
 

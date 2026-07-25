@@ -1,0 +1,4 @@
+-r requirements.txt
+numpy==1.26.4
+torch==2.2.0
+pyinstaller>=6.10,<7

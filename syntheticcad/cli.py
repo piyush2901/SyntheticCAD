@@ -7,15 +7,18 @@ from pathlib import Path
 
 from syntheticcad.dashboard import write_executive_dashboard
 from syntheticcad.mapping_guide import write_mapping_guide
+from syntheticcad.privacy import build_privacy_report
 from syntheticcad.profiling import build_profile, read_csv, write_json
 from syntheticcad.sample_data import make_sample_cad
 from syntheticcad.schema import SyntheticCADMapping, load_mapping, save_mapping
+from syntheticcad.sensitive import field_profile
 from syntheticcad.synthesis import (
-    synthesize_baseline_result,
-    synthesize_pattern_matched,
+    synthesize_conditional_result,
     synthesize_sdv,
     write_export_package,
 )
+from syntheticcad.tabular import synthesize_single_table
+from syntheticcad.tabular_dashboard import write_tabular_dashboard
 from syntheticcad.validation import validate_synthetic_data
 
 
@@ -68,15 +71,8 @@ def _cmd_synthesize(args: argparse.Namespace) -> int:
         usecols=mapped_columns,
         nrows=source_limit,
     )
-    if args.method == "baseline":
-        synthesis = synthesize_baseline_result(
-            real_df,
-            mapping,
-            event_count=args.events,
-            seed=args.seed,
-        )
-    elif args.method == "pattern":
-        synthesis = synthesize_pattern_matched(
+    if args.method == "conditional":
+        synthesis = synthesize_conditional_result(
             real_df,
             mapping,
             event_count=args.events,
@@ -119,7 +115,12 @@ def _cmd_synthesize(args: argparse.Namespace) -> int:
         ),
         **run_metadata,
     }
+    privacy_report = build_privacy_report(real_df, synthetic_df, mapping, seed=args.seed)
+    validation["privacy_risk"] = privacy_report
     paths = write_export_package(synthetic_df, args.out_dir, validation_report=validation)
+    privacy_path = Path(args.out_dir) / "privacy_report.json"
+    write_json(privacy_report, privacy_path)
+    paths["privacy_report"] = privacy_path
     if synthesis.method.startswith("sdv") and synthesis.details.get("metadata"):
         metadata_path = Path(args.out_dir) / "sdv_metadata.json"
         write_json(synthesis.details["metadata"], metadata_path)
@@ -139,6 +140,72 @@ def _cmd_synthesize(args: argparse.Namespace) -> int:
         print(f"Synthesis model limited to first {args.source_max_rows} source rows.")
     for label, path in paths.items():
         print(f"Wrote {label}: {path}")
+    return 0
+
+
+def _cmd_sensitive_profile(args: argparse.Namespace) -> int:
+    df = read_csv(args.csv, nrows=args.max_rows)
+    profile = field_profile(df)
+    profile.update(
+        {
+            "source_file": Path(args.csv).name,
+            "profile_row_limit": args.max_rows,
+        }
+    )
+    target = Path(args.out)
+    write_json(profile, target)
+    print(f"Rows profiled: {df.shape[0]:,}")
+    print(f"Fields profiled: {df.shape[1]:,}")
+    print(f"Wrote sensitive field profile: {target}")
+    return 0
+
+
+def _cmd_synthesize_table(args: argparse.Namespace) -> int:
+    header = read_csv(args.csv, nrows=0)
+    selected = (
+        [column.strip() for column in args.columns.split(",") if column.strip()]
+        if args.columns
+        else list(header.columns)
+    )
+    missing = [column for column in selected if column not in header.columns]
+    if missing:
+        raise ValueError(
+            "Selected columns were not found: " + ", ".join(missing)
+        )
+    real_df = read_csv(args.csv, usecols=selected, nrows=args.source_max_rows)
+    result = synthesize_single_table(
+        real_df,
+        selected_columns=selected,
+        rows=args.rows,
+        method=args.method,
+        seed=args.seed,
+        rare_threshold=args.rare_threshold,
+        ctgan_epochs=args.ctgan_epochs,
+    )
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = out_dir / "synthetic_data.csv"
+    report_path = out_dir / "validation_report.json"
+    metadata_path = out_dir / "sdv_metadata.json"
+    dashboard_path = out_dir / "validation_dashboard.html"
+    result.dataframe.to_csv(csv_path, index=False)
+    write_json(result.report, report_path)
+    write_json(result.report["metadata"], metadata_path)
+    write_tabular_dashboard(
+        result.model_data,
+        result.dataframe,
+        result.report,
+        dashboard_path,
+    )
+    print(f"Synthetic rows: {len(result.dataframe):,}")
+    print(f"SDV quality score: {result.report['quality']['overall_score']:.4f}")
+    print(
+        "Exact source identity matches: "
+        f"{result.report['privacy']['direct_identifier_overlap']['exact_identity_combination']['matching_synthetic_rows']:,}"
+    )
+    print(f"Wrote dashboard: {dashboard_path}")
+    print(f"Wrote synthetic CSV: {csv_path}")
+    print(f"Wrote validation report: {report_path}")
     return 0
 
 
@@ -165,11 +232,11 @@ def build_parser() -> argparse.ArgumentParser:
     synth_parser.add_argument("--events", type=int, default=None, help="Synthetic event count; default matches input")
     synth_parser.add_argument(
         "--method",
-        choices=["sdv", "pattern", "baseline"],
-        default="sdv",
+        choices=["conditional", "sdv"],
+        default="conditional",
         help=(
-            "Synthesis engine to use. SDV is the MVP default, pattern is a fast "
-            "empirical pattern matcher, and baseline is a dependency-light fallback."
+            "CAD synthesis engine. Conditional is the implemented fast CAD model; "
+            "SDV uses the event/unit relational path when unit-level data is present."
         ),
     )
     synth_parser.add_argument(
@@ -180,6 +247,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     synth_parser.add_argument("--seed", type=int, default=42)
     synth_parser.set_defaults(func=_cmd_synthesize)
+
+    sensitive_parser = subparsers.add_parser(
+        "sensitive-profile",
+        help="Classify identifier, quasi-identifier, and sensitive fields",
+    )
+    sensitive_parser.add_argument("csv", help="Input CSV")
+    sensitive_parser.add_argument(
+        "--out",
+        default="outputs/sensitive_profile.json",
+    )
+    sensitive_parser.add_argument("--max-rows", type=int, default=None)
+    sensitive_parser.set_defaults(func=_cmd_sensitive_profile)
+
+    table_parser = subparsers.add_parser(
+        "synthesize-table",
+        help="Generate a synthetic single-table dataset with SDV",
+    )
+    table_parser.add_argument("csv", help="Input CSV")
+    table_parser.add_argument("--out-dir", default="outputs/tabular_run")
+    table_parser.add_argument(
+        "--columns",
+        help="Comma-separated fields to include; default uses every field",
+    )
+    table_parser.add_argument("--rows", type=int, default=None)
+    table_parser.add_argument(
+        "--method",
+        choices=["gaussian_copula", "ctgan"],
+        default="gaussian_copula",
+    )
+    table_parser.add_argument("--rare-threshold", type=int, default=5)
+    table_parser.add_argument("--ctgan-epochs", type=int, default=100)
+    table_parser.add_argument("--source-max-rows", type=int, default=None)
+    table_parser.add_argument("--seed", type=int, default=42)
+    table_parser.set_defaults(func=_cmd_synthesize_table)
 
     return parser
 
