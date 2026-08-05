@@ -14,6 +14,18 @@ source data to Google, Modal, SDV services, or another cloud endpoint.
 The implementation decisions and mentor-feedback checklist are documented in
 [`docs/MVP_METHOD_AND_MENTOR_FEEDBACK.md`](docs/MVP_METHOD_AND_MENTOR_FEEDBACK.md).
 
+## Download The Windows App
+
+Most users do not need Python or the source code.
+
+1. Download the Windows ZIP from the
+   [latest SyntheticCAD release](https://github.com/piyush2901/SyntheticCAD/releases/latest).
+2. Extract the complete ZIP folder.
+3. Double-click `SyntheticCAD.exe`.
+
+See the [simple Windows download and installation guide](docs/WINDOWS_INSTALL_GUIDE.md)
+for step-by-step instructions and troubleshooting.
+
 ## Current MVP
 
 The guided local application provides:

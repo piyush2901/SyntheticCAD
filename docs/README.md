@@ -12,3 +12,8 @@ Published entry point:
 ```text
 index.html
 ```
+
+User documentation:
+
+- [Windows download and installation guide](WINDOWS_INSTALL_GUIDE.md)
+- [MVP method and mentor feedback](MVP_METHOD_AND_MENTOR_FEEDBACK.md)
