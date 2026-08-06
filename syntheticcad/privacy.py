@@ -176,7 +176,14 @@ def _nearest_distance_stats(
     chunk_size: int = 256,
 ) -> dict[str, float | None]:
     if queries.size == 0 or reference.size == 0:
-        return {"count": 0, "median": None, "p05": None, "p95": None}
+        return {
+            "count": 0,
+            "minimum": None,
+            "p01": None,
+            "p05": None,
+            "median": None,
+            "p95": None,
+        }
     nearest: list[np.ndarray] = []
     for start in range(0, queries.shape[0], chunk_size):
         batch = queries[start : start + chunk_size]
@@ -185,6 +192,8 @@ def _nearest_distance_stats(
     values = np.concatenate(nearest)
     return {
         "count": int(values.size),
+        "minimum": round(float(np.min(values)), 4),
+        "p01": round(float(np.quantile(values, 0.01)), 4),
         "median": round(float(np.median(values)), 4),
         "p05": round(float(np.quantile(values, 0.05)), 4),
         "p95": round(float(np.quantile(values, 0.95)), 4),
@@ -197,7 +206,14 @@ def _nearest_neighbor_ratio(
     chunk_size: int = 256,
 ) -> dict[str, float | None]:
     if queries.size == 0 or reference.shape[0] < 2:
-        return {"count": 0, "median": None, "p05": None, "p95": None}
+        return {
+            "count": 0,
+            "minimum": None,
+            "p01": None,
+            "p05": None,
+            "median": None,
+            "p95": None,
+        }
     ratios: list[np.ndarray] = []
     for start in range(0, queries.shape[0], chunk_size):
         batch = queries[start : start + chunk_size]
@@ -208,6 +224,8 @@ def _nearest_neighbor_ratio(
     values = np.concatenate(ratios)
     return {
         "count": int(values.size),
+        "minimum": round(float(np.min(values)), 4),
+        "p01": round(float(np.quantile(values, 0.01)), 4),
         "median": round(float(np.median(values)), 4),
         "p05": round(float(np.quantile(values, 0.05)), 4),
         "p95": round(float(np.quantile(values, 0.95)), 4),

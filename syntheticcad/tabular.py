@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version
 import math
 import time
 from typing import Any
@@ -10,6 +11,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from syntheticcad import __version__
 from syntheticcad.dates import parse_datetime
 from syntheticcad.privacy import (
     _encoded_feature_sets,
@@ -86,6 +88,17 @@ def _duration_label(seconds: float) -> str:
     if seconds < 3600:
         return f"{math.ceil(seconds / 60)} min"
     return f"{seconds / 3600:.1f} hr"
+
+
+def _software_versions() -> dict[str, str]:
+    packages = {"sdv": "sdv", "sdmetrics": "sdmetrics", "pandas": "pandas", "numpy": "numpy"}
+    output = {"syntheticcad": __version__}
+    for label, package in packages.items():
+        try:
+            output[label] = version(package)
+        except PackageNotFoundError:
+            output[label] = "not installed"
+    return output
 
 
 def _prepare_datetimes(
@@ -395,7 +408,7 @@ def _distance_privacy_screens(
     seed: int,
     sample_size: int = 500,
 ) -> dict[str, Any]:
-    """Benchmark synthetic proximity against a held-out real-to-real baseline."""
+    """Benchmark sampled synthetic proximity against source-reference subsets."""
 
     columns = [column for column in real.columns if column in synthetic.columns]
     if not columns or len(real) < 4 or len(synthetic) < 2:
@@ -423,38 +436,40 @@ def _distance_privacy_screens(
 
     rng = np.random.default_rng(seed)
     indices = rng.permutation(len(real))
-    holdout_count = min(sample_size, max(1, len(real) // 5))
-    train_count = min(sample_size, max(1, len(real) - holdout_count))
-    holdout = real.iloc[indices[:holdout_count]]
-    train = real.iloc[indices[holdout_count : holdout_count + train_count]]
+    reference_count = min(sample_size, max(1, len(real) // 5))
+    benchmark_count = min(sample_size, max(1, len(real) - reference_count))
+    source_reference = real.iloc[indices[:reference_count]]
+    source_benchmark = real.iloc[
+        indices[reference_count : reference_count + benchmark_count]
+    ]
     synthetic_sample = synthetic.sample(
         n=min(sample_size, len(synthetic)),
         random_state=seed,
     )
-    holdout_values, synthetic_values, train_values = _encoded_feature_sets(
+    reference_values, synthetic_values, benchmark_values = _encoded_feature_sets(
         [
-            feature_frame(holdout),
+            feature_frame(source_reference),
             feature_frame(synthetic_sample),
-            feature_frame(train),
+            feature_frame(source_benchmark),
         ]
     )
-    holdout_to_synthetic = _nearest_distance_stats(
-        holdout_values,
+    source_to_synthetic = _nearest_distance_stats(
+        reference_values,
         synthetic_values,
         chunk_size=128,
     )
-    holdout_to_real = _nearest_distance_stats(
-        holdout_values,
-        train_values,
+    source_to_source = _nearest_distance_stats(
+        reference_values,
+        benchmark_values,
         chunk_size=128,
     )
     nndr = _nearest_neighbor_ratio(
         synthetic_values,
-        train_values,
+        benchmark_values,
         chunk_size=128,
     )
-    synthetic_median = holdout_to_synthetic.get("median")
-    real_median = holdout_to_real.get("median")
+    synthetic_median = source_to_synthetic.get("median")
+    real_median = source_to_source.get("median")
     ratio = (
         round(float(synthetic_median) / max(float(real_median), 1e-9), 4)
         if synthetic_median is not None and real_median is not None
@@ -463,21 +478,41 @@ def _distance_privacy_screens(
     return {
         "available": True,
         "columns": columns,
-        "sample_size": min(holdout_count, train_count, len(synthetic_sample)),
+        "sample_size": min(reference_count, benchmark_count, len(synthetic_sample)),
+        "comparison_data": (
+            "Source-reference subsets sampled from the same source data used to fit "
+            "the synthesizer. This is not an independent holdout evaluation."
+        ),
+        "encoding": (
+            "Categorical values are one-hot encoded. Numeric and datetime features "
+            "are scaled by the combined feature standard deviation. Missing encoded "
+            "values are filled with zero."
+        ),
+        "distance": "Euclidean distance across the encoded and scaled feature set.",
         "distance_to_closest_record": {
-            "holdout_to_synthetic": holdout_to_synthetic,
-            "holdout_to_real_train_benchmark": holdout_to_real,
+            "source_reference_to_synthetic": source_to_synthetic,
+            "source_reference_to_source_benchmark": source_to_source,
+            # Retained for compatibility with reports created before v0.2.
+            "holdout_to_synthetic": source_to_synthetic,
+            "holdout_to_real_train_benchmark": source_to_source,
             "median_distance_ratio": ratio,
+            "formula": (
+                "median(source-reference to nearest synthetic) / "
+                "median(source-reference to nearest source-benchmark record)"
+            ),
             "interpretation": (
-                "Ratios materially below 1 mean held-out real rows are closer to "
-                "synthetic rows than to the real training benchmark and require review."
+                "A lower ratio means sampled source-reference rows are closer to "
+                "synthetic rows than to the sampled source benchmark. No universal "
+                "pass threshold is asserted."
             ),
         },
         "nearest_neighbor_distance_ratio": {
+            "synthetic_to_source_benchmark": nndr,
             "synthetic_to_real_train": nndr,
+            "formula": "distance to nearest source record / distance to second-nearest source record",
             "interpretation": (
                 "Values near zero indicate a synthetic row is much closer to one "
-                "training row than to its next-nearest training row."
+                "sampled source record than to its next-nearest source record."
             ),
         },
     }
@@ -631,6 +666,8 @@ def synthesize_single_table(
     }
 
     total_seconds = time.perf_counter() - pipeline_started
+    quality_properties = _to_records(quality.get_properties())
+    diagnostic_properties = _to_records(diagnostic.get_properties())
     report = {
         "pipeline": {
             "method": method,
@@ -662,14 +699,50 @@ def synthesize_single_table(
         "field_assessments": [assessment.to_dict() for assessment in assessments],
         "quality": {
             "overall_score": round(float(quality.get_score()), 4),
-            "properties": _to_records(quality.get_properties()),
+            "properties": quality_properties,
             "column_shapes": _to_records(column_shapes),
             "column_pair_trends": _to_records(pair_trends),
             "column_metrics": column_metrics,
             "diagnostic_score": round(float(diagnostic.get_score()), 4),
+            "diagnostic_properties": diagnostic_properties,
+            "metric_scope": {
+                "fidelity": (
+                    "Full source data used for model fitting compared with the generated "
+                    "synthetic data. This is a training-data fidelity evaluation."
+                ),
+                "distance_screens": privacy["distance_screens"].get(
+                    "comparison_data",
+                    "Not available.",
+                ),
+                "overall_score_meaning": (
+                    "SDV overall quality is an aggregate of the quality components SDV "
+                    "could score in this run. See the component breakdown; it is not a "
+                    "privacy score or row-level accuracy score."
+                ),
+                "diagnostic_meaning": (
+                    "The SDV diagnostic is a basic validity gate for data types, ranges, "
+                    "and structural rules. It is not a performance or privacy score."
+                ),
+            },
         },
         "privacy": privacy,
         "metadata": metadata.to_dict(),
+        "treatment_summary": {
+            "identifier_treatment": (
+                "Direct and record identifiers were excluded from model fitting and "
+                "regenerated after sampling."
+            ),
+            "excluded_identifier_columns": [
+                column for column in selected if column not in model_columns
+            ],
+            "rare_category_threshold": rare_threshold,
+            "rare_category_changes": rare_details,
+            "metadata_type_overrides": {
+                column: "categorical" for column in discrete_numeric_columns
+            },
+            "post_generation_repairs": constraint_details,
+        },
+        "software_versions": _software_versions(),
         "methodology": (
             "Direct identifiers were excluded before fitting. Rare categorical values were "
             f"grouped below k={rare_threshold}. The official "
@@ -679,9 +752,10 @@ def synthesize_single_table(
         ),
         "claims": {
             "supported": [
+                "Candidate synthetic data and an auditable evidence package were generated.",
                 "The run completed locally without a cloud data transfer.",
                 "Direct identifiers were not included in model fitting.",
-                "The report measures statistical fidelity and observed source overlap.",
+                "The report measures training-data fidelity and observed source overlap.",
             ],
             "not_claimed": [
                 "Formal differential privacy",

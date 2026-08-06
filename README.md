@@ -8,8 +8,12 @@ answer two separate questions:
 2. **Privacy evidence:** Did source identifiers, exact rows, or rare combinations
    survive into the output?
 
-The application runs on the user's computer. The current pipeline does not send
-source data to Google, Modal, SDV services, or another cloud endpoint.
+**SyntheticCAD creates candidate synthetic data and an auditable evidence
+package for agency review. It does not certify that data is risk-free, legally
+unrestricted, or suitable for every research use.**
+
+The application and synthesis pipeline run on the user's computer. Source data
+is not uploaded by the application.
 
 The implementation decisions and mentor-feedback checklist are documented in
 [`docs/MVP_METHOD_AND_MENTOR_FEEDBACK.md`](docs/MVP_METHOD_AND_MENTOR_FEEDBACK.md).
@@ -43,12 +47,14 @@ The guided local application provides:
 - A Basic Overview and Advanced Evidence dashboard
 - Synthetic CSV, SDV metadata, validation JSON, and sharing disclaimer exports
 
-The primary user-facing methods are:
+The recommended first run is:
 
 - **SDV Gaussian Copula:** recommended local default; fast, classical statistical
   modeling
-- **SDV CTGAN:** advanced neural option; substantially slower and dependent on
-  training epochs and available hardware
+
+**SDV CTGAN** is retained only under advanced model comparison. It is
+substantially slower, depends on training epochs and hardware, and should be run
+only when an important relationship needs comparison.
 
 The older baseline and empirical pattern-matching prototypes are not exposed in
 the Windows workflow. The existing CAD-specific `conditional` and relational
@@ -103,12 +109,13 @@ when that port is already in use.
 3. Select only the fields needed for the research use case.
 4. Review the modeled-field count, output row count, method, and runtime range.
 5. Generate locally and open the Basic Overview.
-6. Inspect privacy evidence, distributions, random samples, and Advanced Evidence
+6. Inspect privacy evidence, distributions, synthetic samples, and Advanced Evidence
    before downloading or sharing the synthetic CSV.
 
 Direct identifiers can remain selected for the output, but they are excluded
-from model fitting and regenerated as explicit synthetic aliases. The dashboard
-never embeds direct source identifier values.
+from model fitting and regenerated as explicit synthetic aliases. The shareable
+dashboard contains aggregate source statistics and synthetic-only sample rows;
+it does not embed real source records or local file paths.
 
 ## Command Line
 
@@ -191,21 +198,20 @@ The dashboard reports:
 - Exact source identifier value and identity-combination overlap
 - Exact modeled-row overlap
 - Rare-combination exposure
-- Distance-to-closest-record benchmark against a real holdout
+- Distance-to-closest-record benchmark using sampled source-reference subsets
 - Nearest-neighbor distance ratio
 - Inferred deterministic constraints and applied repairs
 - Runtime by fit, sample, and evaluation stage
 - A clear list of supported and unsupported claims
 
-The Basic Overview uses a common gap scale for triage:
+The dashboard does not apply one pass/fail color scale to unrelated metrics.
+Each gap is named, its denominator or comparison scope is shown, and acceptance
+targets must be agreed for the intended research use.
 
-- `<= 0.10`: green
-- `0.10` to `< 0.50`: review
-- `>= 0.50`: high
-
-These colors organize review; they are not a universal acceptance standard.
-Field-specific targets should be agreed with the agency and researcher before a
-production release.
+Fidelity metrics compare the synthetic output with the source data used to fit
+the model. The current record-distance screen also samples that fitted source
+data; it is **not an independent holdout evaluation**. A true train/holdout
+evaluation remains a release requirement.
 
 ## Privacy Boundary
 
@@ -224,6 +230,23 @@ The application therefore does **not** claim:
 Closed agency data should remain inside the agency environment. A safer
 engagement model is for the agency to run SyntheticCAD locally and share only
 the synthetic output or validation report after internal privacy review.
+
+## Product Focus And Release Gates
+
+The near-term differentiator is not a new general-purpose generator. It is an
+offline, domain-aware release-review workflow: field treatment, CAD event/unit
+relationships, utility evidence, privacy screens, and explicit non-claims in one
+auditable package. Healthcare can later use the same core through a separate
+domain pack with healthcare-specific identifiers, constraints, and utility
+questions.
+
+Before production or commercial distribution, the project still needs:
+
+- independent holdout evaluation and repeat-seed release policy
+- a validated CAD event/unit relational workflow
+- agency and researcher acceptance targets for use-critical metrics
+- Windows code signing and a smaller installer
+- review of SDV licensing for the intended distribution model
 
 ## Tests
 

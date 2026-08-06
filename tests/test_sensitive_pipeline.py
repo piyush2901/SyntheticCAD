@@ -139,7 +139,7 @@ class SensitivePipelineTests(unittest.TestCase):
             ctgan["estimated_seconds_high"],
         )
 
-    def test_distance_screens_use_real_holdout_benchmark(self) -> None:
+    def test_distance_screens_disclose_source_reference_scope(self) -> None:
         real = pd.DataFrame(
             {
                 "age": list(range(100)),
@@ -168,6 +168,12 @@ class SensitivePipelineTests(unittest.TestCase):
                 "median"
             ]
         )
+        self.assertIsNotNone(
+            screens["distance_to_closest_record"][
+                "source_reference_to_synthetic"
+            ]["p01"]
+        )
+        self.assertIn("not an independent holdout", screens["comparison_data"])
 
     def test_dashboard_omits_identifier_values(self) -> None:
         real = self.source[
@@ -224,6 +230,9 @@ class SensitivePipelineTests(unittest.TestCase):
             html = path.read_text(encoding="utf-8")
         self.assertIn("Basic Overview", html)
         self.assertIn("Advanced Evidence", html)
+        self.assertIn("no real source records", html)
+        self.assertNotIn("Real records", html)
+        self.assertNotIn('"real_rows"', html)
         self.assertNotIn("Alex", html)
 
 

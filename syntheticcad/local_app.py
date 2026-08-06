@@ -54,6 +54,7 @@ class JobState:
     logs: list[str] = field(default_factory=list)
     result: dict[str, Any] | None = None
     error: str | None = None
+    stage: str = "Queued"
 
     def log(self, message: str) -> None:
         with JOBS_LOCK:
@@ -61,11 +62,17 @@ class JobState:
                 f"[{datetime.now().strftime('%H:%M:%S')}] {message}"
             )
 
+    def set_stage(self, stage: str, message: str) -> None:
+        with JOBS_LOCK:
+            self.stage = stage
+            self.logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
+
     def to_dict(self) -> dict[str, Any]:
         end = self.finished_at or time.time()
         return {
             "id": self.id,
             "status": self.status,
+            "stage": self.stage,
             "elapsed_seconds": round(end - self.started_at, 1),
             "logs": list(self.logs),
             "result": self.result,
@@ -150,10 +157,13 @@ def _run_job(params: dict[str, Any], job: JobState) -> dict[str, Any]:
     out_dir = PROJECT_ROOT / "outputs" / f"{csv_path.stem}_sdv_{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    job.log(f"Reading {csv_path.name}")
+    job.set_stage("1 of 4 - Reading data", f"Reading {csv_path.name}")
     source = read_csv(csv_path, usecols=selected)
     job.log(f"Loaded {len(source):,} rows and {len(selected):,} selected fields")
-    job.log(f"Fitting {SUPPORTED_METHODS[method]['label']} locally")
+    job.set_stage(
+        "2 of 4 - Modeling and generation",
+        f"Fitting {SUPPORTED_METHODS[method]['label']} locally",
+    )
     result = synthesize_single_table(
         source,
         selected_columns=selected,
@@ -162,6 +172,10 @@ def _run_job(params: dict[str, Any], job: JobState) -> dict[str, Any]:
         seed=seed,
         rare_threshold=rare_threshold,
         ctgan_epochs=epochs,
+    )
+    job.set_stage(
+        "3 of 4 - Validation evidence",
+        "Calculating fidelity, validity, overlap, and record-distance evidence",
     )
     consistency_runs = [
         {
@@ -176,7 +190,8 @@ def _run_job(params: dict[str, Any], job: JobState) -> dict[str, Any]:
     ]
     for run_index in range(1, repeat_runs):
         run_seed = seed + run_index
-        job.log(
+        job.set_stage(
+            f"3 of 4 - Stability run {run_index + 1} of {repeat_runs}",
             f"Running stability check {run_index + 1} of {repeat_runs} "
             f"with seed {run_seed}"
         )
@@ -248,6 +263,7 @@ def _run_job(params: dict[str, Any], job: JobState) -> dict[str, Any]:
         f"across {repeat_runs} run{'s' if repeat_runs != 1 else ''}"
     )
 
+    job.set_stage("4 of 4 - Writing evidence", "Preparing the review evidence package")
     csv_output = out_dir / "synthetic_data.csv"
     report_output = out_dir / "validation_report.json"
     metadata_output = out_dir / "sdv_metadata.json"
@@ -280,12 +296,14 @@ def _run_job(params: dict[str, Any], job: JobState) -> dict[str, Any]:
             ),
             "quality_score": quality["overall_score"],
             "identity_matches": exact_identity["matching_synthetic_rows"],
+            "identity_match_rate": exact_identity.get("match_rate", 0.0),
+            "identity_match_denominator": len(result.dataframe),
             "runtime_seconds": result.report["runtime"]["total_all_runs_seconds"],
             "consistency_runs": repeat_runs,
             "output_folder": str(out_dir),
         },
         "artifacts": [
-            _artifact(dashboard_output, "Open Validation Dashboard", primary=True),
+            _artifact(dashboard_output, "Open Evidence Dashboard", primary=True),
             _artifact(csv_output, "Synthetic CSV"),
             _artifact(report_output, "Validation Report"),
             _artifact(metadata_output, "SDV Metadata"),
@@ -320,9 +338,9 @@ def _start_job(params: dict[str, Any]) -> str:
 
 
 def _page() -> str:
-    methods = "".join(
-        f'<option value="{escape(key)}">{escape(value["label"])}</option>'
-        for key, value in SUPPORTED_METHODS.items()
+    methods = (
+        '<option value="gaussian_copula">Recommended default: Gaussian Copula</option>'
+        '<option value="ctgan">Advanced comparison: CTGAN neural model</option>'
     )
     return f"""<!doctype html>
 <html lang="en">
@@ -375,6 +393,8 @@ def _page() -> str:
     .role.sensitive_attribute {{ background:#e4edf5; color:#315d79; }}
     .role.model_attribute {{ background:#e4f0e8; color:var(--green); }}
     .config-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }}
+    .recommended {{ border:1px solid #aac9bd; border-left:4px solid var(--accent); background:#eef6f2; padding:13px 14px; }}
+    .recommended small {{ color:var(--muted); display:block; margin-top:4px; line-height:1.45; }}
     label {{ display:block; font-size:12px; font-weight:750; margin-bottom:6px; }} .control input,.control select {{ width:100%; }}
     .estimate {{ border-left:4px solid var(--blue); background:#eef4f7; padding:13px 14px; margin-top:14px; display:flex; justify-content:space-between; gap:15px; align-items:center; }}
     .estimate b {{ font-size:18px; }} .estimate span {{ color:var(--muted); font-size:11px; max-width:600px; }}
@@ -434,23 +454,24 @@ def _page() -> str:
 
       <section class="step" data-step="3">
         <h1>Configure the run</h1>
-        <p class="lead">The recommended method is optimized for a quick local first pass. Advanced neural training is available when the extra runtime is justified.</p>
+        <p class="lead">SyntheticCAD chooses the recommended first-run model. Technical comparison options stay out of the main workflow.</p>
         <div class="panel">
           <div class="config-grid">
-            <div class="control"><label for="method">Synthesis method</label><select id="method">{methods}</select></div>
+            <div class="recommended"><b>Recommended synthesis</b><small>SDV Gaussian Copula. Fast, stable, and suitable for the first local evidence run on most tabular datasets.</small></div>
             <div class="control"><label for="rows">Synthetic rows</label><input id="rows" type="number" min="1"></div>
           </div>
           <div class="estimate"><div><small>Expected local runtime</small><b id="runtime-estimate">-</b></div><span id="runtime-note"></span></div>
           <details>
-            <summary>Advanced settings</summary>
+            <summary>Advanced model comparison and settings</summary>
             <div class="config-grid" style="margin-top:12px">
+              <div class="control"><label for="method">Technical model</label><select id="method">{methods}</select></div>
               <div class="control"><label for="rare-threshold">Group categories with fewer than</label><input id="rare-threshold" type="number" min="2" value="5"></div>
               <div class="control"><label for="seed">Random seed</label><input id="seed" type="number" value="42"></div>
               <div class="control" id="epochs-control"><label for="epochs">CTGAN epochs</label><input id="epochs" type="number" min="1" value="100"></div>
               <div class="control"><label for="repeat-runs">Stability check</label><select id="repeat-runs"><option value="1">One run</option><option value="3">Three seeds</option></select></div>
             </div>
           </details>
-          <div class="notice" style="margin-top:14px">This run will measure fidelity and observed privacy exposure. It will not claim formal differential privacy or zero re-identification risk.</div>
+          <div class="notice" style="margin-top:14px">This run creates candidate synthetic data and review evidence. It does not certify zero privacy risk, legal clearance, or suitability for every research use.</div>
           <div class="actions"><button type="button" class="secondary" data-back="2">Back</button><button type="button" class="primary" id="start-run">Generate synthetic data</button></div>
         </div>
       </section>
@@ -463,6 +484,7 @@ def _page() -> str:
           <div class="panel"><h2>What happens next</h2><p class="lead" style="font-size:12px;margin-bottom:0">The result includes a Basic Overview, Advanced Evidence, synthetic CSV, SDV metadata, and a sharing disclaimer.</p></div>
         </div>
         <div id="completed-view" class="hidden">
+          <div class="notice" style="margin-bottom:14px"><strong>Decision support, not certification.</strong> Similarity and overlap results must be reviewed together. A high fidelity score does not establish privacy.</div>
           <div class="result-grid" id="result-facts"></div>
           <div class="result-links" id="result-links"></div>
           <div class="actions"><button type="button" class="secondary" id="new-run">Start another run</button></div>
@@ -553,17 +575,17 @@ def _page() -> str:
     }});
     async function pollJob() {{
       const response=await fetch(`/api/job?id=${{encodeURIComponent(state.jobId)}}`); const job=await response.json();
-      $('job-status').textContent = job.status === 'running' ? `Running | ${{job.elapsed_seconds.toFixed(1)}} sec` : job.status;
+      $('job-status').textContent = job.status === 'running' ? `${{job.stage}} | elapsed ${{job.elapsed_seconds.toFixed(1)}} sec` : job.status;
       $('job-log').textContent = job.logs.join('\\n') || 'Starting...'; $('job-log').scrollTop=$('job-log').scrollHeight;
       if (job.status === 'completed') return finishSuccess(job.result);
       if (job.status === 'failed') return finishError(job.error);
       setTimeout(pollJob,1000);
     }}
     function finishSuccess(result) {{
-      $('result-title').textContent='Run complete'; $('result-lead').textContent='Review the visual evidence before downloading or sharing the synthetic output.';
+      $('result-title').textContent='Evidence generated - agency review required'; $('result-lead').textContent='This is candidate synthetic data. Review the dashboard before downloading or sharing the output.';
       $('running-view').classList.add('hidden'); $('completed-view').classList.remove('hidden');
       const s=result.summary; $('result-facts').innerHTML=[
-        ['Real rows',s.real_rows.toLocaleString()],['Synthetic rows',s.synthetic_rows.toLocaleString()],['Modeled fields',s.modeled_fields],['Identity matches',s.identity_matches],['SDV quality',s.quality_score.toFixed(3)]
+        ['Source rows',s.real_rows.toLocaleString()],['Synthetic rows',s.synthetic_rows.toLocaleString()],['Fields evaluated',s.modeled_fields],['Exact identity combinations',`${{s.identity_matches.toLocaleString()}} of ${{s.identity_match_denominator.toLocaleString()}}`],['Stability evidence',`${{s.consistency_runs}} seed${{s.consistency_runs===1?'':'s'}}`]
       ].map(([label,value])=>`<div class="fact"><small>${{label}}</small><b>${{value}}</b></div>`).join('');
       $('result-links').innerHTML=result.artifacts.map(item=>`<a class="artifact ${{item.primary?'primary':''}}" href="${{item.url}}" ${{item.primary?'target=\"_blank\"':''}}><span>${{escapeHtml(item.label)}}</span><b>Open</b></a>`).join('');
     }}

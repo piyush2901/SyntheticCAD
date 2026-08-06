@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -16,7 +16,7 @@
     header { background:#fff; border-bottom:1px solid var(--line); padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
     h1 { font-size:21px; margin:0; }
     .subtitle { color:var(--muted); font-size:13px; margin-top:3px; }
-    .offline { font-size:12px; font-weight:700; color:var(--good); }
+    .offline { font-size:12px; font-weight:700; color:var(--review); }
     nav { max-width:1400px; margin:0 auto; padding:12px 20px 0; display:flex; gap:4px; }
     nav button { border:1px solid var(--line); background:#fff; color:var(--ink); padding:9px 15px; border-radius:6px 6px 0 0; cursor:pointer; font-weight:700; }
     nav button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -34,7 +34,6 @@
     .dot { width:9px; height:9px; display:inline-block; margin-right:5px; border-radius:50%; }
     .paired-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
     .paired-metric { border:1px solid var(--line); border-top:4px solid #8c9692; padding:11px; min-width:0; }
-    .paired-metric.good { border-top-color:var(--good); } .paired-metric.review { border-top-color:#d29a21; } .paired-metric.high { border-top-color:var(--high); }
     .metric-label { font-size:12px; font-weight:750; min-height:30px; }
     .paired-values { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
     .paired-values span:first-child { color:var(--real); } .paired-values span:last-child { color:var(--synthetic); }
@@ -52,13 +51,16 @@
     .bar-group label { position:absolute; top:calc(100% + 7px); width:80px; left:50%; transform:translateX(-50%) rotate(-25deg); transform-origin:top center; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
     .sample-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
     .sample-meta { color:var(--muted); font-size:12px; margin:8px 0; }
-    .sample-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .sample-pane h3 { font-size:13px; margin:0 0 7px; } .sample-pane:first-child h3 { color:var(--real); } .sample-pane:last-child h3 { color:var(--synthetic); }
+    .sample-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+    .sample-pane h3 { font-size:13px; margin:0 0 7px; color:var(--synthetic); }
     .table-wrap { overflow:auto; max-height:320px; border:1px solid var(--line); }
     table { border-collapse:collapse; width:100%; font-size:11px; background:#fff; }
     th,td { border-bottom:1px solid #e4e8e5; padding:7px 8px; text-align:left; white-space:nowrap; }
     th { position:sticky; top:0; background:#eef2ef; cursor:pointer; z-index:1; }
     .callout { border-left:4px solid var(--accent); background:#eef5f3; padding:11px 13px; font-size:12px; line-height:1.5; }
+    .positioning { border-left-color:var(--review); background:var(--review-bg); margin-top:0; }
+    .evidence-notes { margin-top:12px; border:1px solid var(--line); padding:10px 12px; font-size:11px; color:var(--muted); line-height:1.5; }
+    .evidence-notes p { margin:4px 0; }
     .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
     .claims ul { margin:8px 0 0; padding-left:18px; font-size:12px; line-height:1.6; }
     .good-text { color:var(--good); font-weight:750; } .review-text { color:var(--review); font-weight:750; } .high-text { color:var(--high); font-weight:750; }
@@ -69,8 +71,8 @@
 </head>
 <body>
   <header>
-    <div><h1>SyntheticCAD Validation</h1><div class="subtitle">3 independent local synthesis runs, shown without source identifiers</div></div>
-    <div class="offline">Processed locally</div>
+    <div><h1>SyntheticCAD Validation</h1><div class="subtitle">Shareable aggregate evidence; no real source records are embedded</div></div>
+    <div class="offline">Agency review required</div>
   </header>
   <nav>
     <button class="tab-button active" data-tab="basic">Basic Overview</button>
@@ -78,8 +80,9 @@
   </nav>
   <main>
     <div id="basic" class="tab active">
+      <div class="callout positioning"><strong>Evidence generated - agency review required.</strong> SyntheticCAD creates candidate synthetic data and an auditable evidence package for agency review. It does not certify that data is risk-free, legally unrestricted, or suitable for every research use.</div>
       <div class="summary-strip">
-        <div class="summary-item"><small>Real rows</small><b>20,000</b></div>
+        <div class="summary-item"><small>Source rows evaluated</small><b>20,000</b></div>
         <div class="summary-item"><small>Synthetic rows</small><b>20,000</b></div>
         <div class="summary-item"><small>Modeled fields</small><b>5</b></div>
         <div class="summary-item"><small>Identifiers replaced</small><b>4</b></div>
@@ -88,44 +91,43 @@
 
       <section>
         <div class="section-head">
-          <div><h2>Key Pattern Comparisons</h2><p>Each tile uses one real value, one synthetic value, and the measured distribution gap.</p></div>
-          <div class="thresholds">Gap <= 0.10 green | 0.10-0.50 review | >= 0.50 high</div>
+          <div><h2>Key Pattern Comparisons</h2><p>Four featured fields. The label on each tile names its statistic and gap formula; all fields are in Advanced Evidence.</p></div>
         </div>
         <div class="paired-grid">
-      <div class="paired-metric good">
+      <div class="paired-metric neutral">
         <div class="metric-label">age_at_offense</div>
         <div class="paired-values">
-          <span><b>37.000</b><small>Real</small></span>
-          <span><b>38.000</b><small>Synthetic</small></span>
+          <span><b>37.000</b><small>Source median</small></span>
+          <span><b>38.000</b><small>Synthetic median</small></span>
         </div>
-        <div class="metric-foot"><strong>Gap 0.020</strong><span>KS statistic</span></div>
+        <div class="metric-foot"><strong>KS statistic 0.020</strong><span>Lower means closer for this metric</span></div>
       </div>
 
-      <div class="paired-metric good">
+      <div class="paired-metric neutral">
         <div class="metric-label">race</div>
         <div class="paired-values">
-          <span><b>6</b><small>Real</small></span>
-          <span><b>6</b><small>Synthetic</small></span>
+          <span><b>6</b><small>Source categories</small></span>
+          <span><b>6</b><small>Synthetic categories</small></span>
         </div>
-        <div class="metric-foot"><strong>Gap 0.006</strong><span>Total variation distance</span></div>
+        <div class="metric-foot"><strong>Total variation distance 0.006</strong><span>Lower means closer for this metric</span></div>
       </div>
 
-      <div class="paired-metric good">
+      <div class="paired-metric neutral">
         <div class="metric-label">sex</div>
         <div class="paired-values">
-          <span><b>3</b><small>Real</small></span>
-          <span><b>3</b><small>Synthetic</small></span>
+          <span><b>3</b><small>Source categories</small></span>
+          <span><b>3</b><small>Synthetic categories</small></span>
         </div>
-        <div class="metric-foot"><strong>Gap 0.003</strong><span>Total variation distance</span></div>
+        <div class="metric-foot"><strong>Total variation distance 0.003</strong><span>Lower means closer for this metric</span></div>
       </div>
 
-      <div class="paired-metric good">
+      <div class="paired-metric neutral">
         <div class="metric-label">offense</div>
         <div class="paired-values">
-          <span><b>42</b><small>Real</small></span>
-          <span><b>42</b><small>Synthetic</small></span>
+          <span><b>42</b><small>Source categories</small></span>
+          <span><b>42</b><small>Synthetic categories</small></span>
         </div>
-        <div class="metric-foot"><strong>Gap 0.017</strong><span>Total variation distance</span></div>
+        <div class="metric-foot"><strong>Total variation distance 0.017</strong><span>Lower means closer for this metric</span></div>
       </div>
     </div>
       </section>
@@ -136,24 +138,24 @@
         </div>
         <div class="privacy-grid">
 
-      <div class="privacy-metric good">
-        <div class="metric-label">Exact source identities reproduced</div>
+      <div class="privacy-metric neutral">
+        <div class="metric-label">Exact identity combinations</div>
         <b>0</b>
-        <span>Uses all selected direct identifier fields together.</span>
+        <span>0 of 20,000 synthetic rows (0.00%). Fields: last_name, first_name, middle_name, date_of_birth.</span>
       </div>
 
 
-      <div class="privacy-metric review">
-        <div class="metric-label">Exact modeled rows reproduced</div>
+      <div class="privacy-metric neutral">
+        <div class="metric-label">Exact modeled rows</div>
         <b>342</b>
-        <span>Exact agreement across every modeled field.</span>
+        <span>342 of 20,000 synthetic rows (1.71%) matched every modeled field.</span>
       </div>
 
 
-      <div class="privacy-metric good">
-        <div class="metric-label">Rare source combinations exposed</div>
+      <div class="privacy-metric neutral">
+        <div class="metric-label">Rare combinations present</div>
         <b>336</b>
-        <span>1.7% of tested rare combinations.</span>
+        <span>336 of 19,837 tested source combinations (1.7%).</span>
       </div>
 
         </div>
@@ -170,12 +172,12 @@
 
       <section>
         <div class="sample-head">
-          <div><h2>Random Sample Check</h2><div class="sample-meta" id="sample-label"></div></div>
+          <div><h2>Synthetic Record Spot Check</h2><div class="sample-meta" id="sample-label"></div></div>
           <button class="action" id="next-sample">Show another sample</button>
         </div>
+        <div class="callout">This shareable dashboard contains no real source records. Source data can be inspected only inside the local application.</div>
         <div class="sample-meta" id="sample-counts"></div>
         <div class="sample-grid">
-          <div class="sample-pane"><h3>Real records (identifier fields excluded)</h3><div class="table-wrap" id="real-sample"></div></div>
           <div class="sample-pane"><h3>Synthetic records</h3><div class="table-wrap" id="synthetic-sample"></div></div>
         </div>
       </section>
@@ -183,26 +185,59 @@
 
     <div id="advanced" class="tab">
       <div class="summary-strip">
-        <div class="summary-item"><small>SDV overall quality</small><b>0.988</b></div>
-        <div class="summary-item"><small>SDV diagnostic</small><b>1.000</b></div>
+        <div class="summary-item"><small>Overall similarity (secondary)</small><b>0.988</b></div>
+        <div class="summary-item"><small>Basic validity gate</small><b>Passed</b></div>
         <div class="summary-item"><small>Prepare</small><b>18.087 sec</b></div>
         <div class="summary-item"><small>Fit</small><b>7.106 sec</b></div>
         <div class="summary-item"><small>Sample</small><b>0.320 sec</b></div>
         <div class="summary-item"><small>Evaluate</small><b>0.313 sec</b></div>
         <div class="summary-item"><small>All runs total</small><b>55.997 sec</b></div>
       </div>
+
       <section>
-        <div class="section-head"><div><h2>Sortable Field Metrics</h2><p>Click a column heading to sort. Lower gap is better; higher SDV shape score is better.</p></div></div>
+        <div class="section-head"><div><h2>Quality Composition</h2><p>Statistical resemblance, separated from privacy evidence.</p></div></div>
+        <div class="privacy-grid">
+
+      <div class="privacy-metric neutral">
+        <div class="metric-label">Column distributions</div>
+        <b>0.988</b>
+        <span>SDV evaluated 5 modeled fields.</span>
+      </div>
+
+
+      <div class="privacy-metric neutral">
+        <div class="metric-label">Column-pair trends</div>
+        <b>Not available</b>
+        <span>10 pair records; aggregate score unavailable in this run.</span>
+      </div>
+
+
+      <div class="privacy-metric neutral">
+        <div class="metric-label">Basic validity gate</div>
+        <b>Passed</b>
+        <span>Diagnostic score 1.000; checks validity, not privacy.</span>
+      </div>
+
+        </div>
+        <div class="evidence-notes">
+          <p><strong>Data used:</strong> Full source data used for fitting compared with generated synthetic data; this is training-data fidelity.</p>
+          <p><strong>Overall score:</strong> SDV overall quality is an aggregate of the quality components SDV could score in this run. See the component breakdown; it is not a privacy or row-level accuracy score.</p>
+          <p><strong>Diagnostic:</strong> A basic validity gate for data types, ranges, and structural rules; not a privacy score.</p>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head"><div><h2>Sortable Field Metrics</h2><p>Click a column heading to sort. Source summary means median for numeric, minimum for datetime, and category count for categorical fields.</p></div></div>
         <div class="table-wrap" style="max-height:520px">
           <table id="metrics-table">
-            <thead><tr><th>Field</th><th>Type</th><th>Real</th><th>Synthetic</th><th>Gap</th><th>SDV shape score</th></tr></thead>
+            <thead><tr><th>Field</th><th>Type</th><th>Source summary</th><th>Synthetic summary</th><th>Named gap</th><th>SDV shape score</th></tr></thead>
             <tbody>
             <tr>
               <td>age_at_offense</td>
               <td>numerical</td>
               <td data-sort="37.0">37.000</td>
               <td data-sort="38.0">38.000</td>
-              <td data-sort="0.0202" class="good-text">0.020</td>
+              <td data-sort="0.0202">KS statistic: 0.020</td>
               <td data-sort="0.97985">0.980</td>
             </tr>
 
@@ -211,7 +246,7 @@
               <td>categorical</td>
               <td data-sort="6">6</td>
               <td data-sort="6">6</td>
-              <td data-sort="0.0059" class="good-text">0.006</td>
+              <td data-sort="0.0059">Total variation distance: 0.006</td>
               <td data-sort="0.99405">0.994</td>
             </tr>
 
@@ -220,7 +255,7 @@
               <td>categorical</td>
               <td data-sort="3">3</td>
               <td data-sort="3">3</td>
-              <td data-sort="0.0027" class="good-text">0.003</td>
+              <td data-sort="0.0027">Total variation distance: 0.003</td>
               <td data-sort="0.9973">0.997</td>
             </tr>
 
@@ -229,7 +264,7 @@
               <td>categorical</td>
               <td data-sort="42">42</td>
               <td data-sort="42">42</td>
-              <td data-sort="0.0172" class="good-text">0.017</td>
+              <td data-sort="0.0172">Total variation distance: 0.017</td>
               <td data-sort="0.9828">0.983</td>
             </tr>
 
@@ -238,7 +273,7 @@
               <td>datetime</td>
               <td data-sort="2025-01-01">2025-01-01</td>
               <td data-sort="2025-01-01">2025-01-01</td>
-              <td data-sort="0.0165" class="good-text">0.017</td>
+              <td data-sort="0.0165">KS statistic: 0.017</td>
               <td data-sort="0.9835">0.984</td>
             </tr>
             </tbody>
@@ -277,36 +312,74 @@
 
 
       <section>
-        <div class="section-head"><div><h2>Record Distance Screens</h2><p>Sampled proximity checks benchmarked against a protected real holdout.</p></div></div>
+        <div class="section-head"><div><h2>Record-distance Review Screen</h2><p>Sampled proximity evidence; no universal pass threshold is asserted.</p></div></div>
         <div class="privacy-grid">
 
       <div class="privacy-metric neutral">
-        <div class="metric-label">Holdout to synthetic median</div>
+        <div class="metric-label">Source reference to synthetic</div>
         <b>0.895</b>
-        <span>Distance to the closest sampled synthetic row.</span>
+        <span>Median nearest-record distance in the sampled comparison.</span>
       </div>
 
 
       <div class="privacy-metric neutral">
-        <div class="metric-label">Holdout to real benchmark</div>
+        <div class="metric-label">Source-to-source benchmark</div>
         <b>0.933</b>
-        <span>Distance between held-out and training real rows.</span>
+        <span>Median distance between two sampled source subsets.</span>
       </div>
 
 
-      <div class="privacy-metric good">
-        <div class="metric-label">DCR benchmark ratio</div>
+      <div class="privacy-metric neutral">
+        <div class="metric-label">Median distance ratio</div>
         <b>0.959</b>
-        <span>Values materially below 1 require review.</span>
+        <span>Synthetic proximity divided by the source benchmark.</span>
       </div>
 
 
-      <div class="privacy-metric good">
+      <div class="privacy-metric neutral">
         <div class="metric-label">Synthetic NNDR median</div>
         <b>0.716</b>
-        <span>Values near zero indicate a row may be unusually close to one training row.</span>
+        <span>Nearest distance divided by second-nearest distance.</span>
       </div>
 
+
+      <div class="privacy-metric neutral">
+        <div class="metric-label">DCR lower-tail p01</div>
+        <b>Not available</b>
+        <span>The closest 1% tail needs particular review.</span>
+      </div>
+
+
+      <div class="privacy-metric neutral">
+        <div class="metric-label">NNDR lower-tail p01</div>
+        <b>Not available</b>
+        <span>Very low tail values may indicate unusually close rows.</span>
+      </div>
+
+        </div>
+        <div class="evidence-notes">
+          <p><strong>Comparison data:</strong> Source-reference subsets sampled from the same source data used to fit the synthesizer. This is not an independent holdout evaluation.</p>
+          <p><strong>Columns:</strong> age_at_offense, race, sex, offense, offense_date | <strong>Sample per group:</strong> 500</p>
+          <p><strong>Distance and encoding:</strong> Euclidean distance. </p>
+          <p><strong>DCR ratio formula:</strong> Not documented.</p>
+          <p><strong>NNDR formula:</strong> Not documented.</p>
+        </div>
+      </section>
+
+
+      <section>
+        <div class="section-head"><div><h2>Treatments, Repairs, and Versions</h2><p>What changed before fitting and after generation.</p></div></div>
+        <div class="two-col">
+          <div class="evidence-notes">
+            <p><strong>Identifiers:</strong> Direct and record identifiers were excluded from model fitting and regenerated after sampling.</p>
+            <p><strong>Excluded fields:</strong> last_name, first_name, middle_name, date_of_birth</p>
+            <p><strong>Rare-category grouping:</strong> threshold 5; 0 fields and 0 source rows affected.</p>
+          </div>
+          <div class="evidence-notes">
+            <p><strong>Type overrides:</strong> 0</p>
+            <p><strong>Post-generation repairs:</strong> 0 documented operations.</p>
+            <p><strong>Software:</strong> Not documented</p>
+          </div>
         </div>
       </section>
 
@@ -323,7 +396,7 @@
   </main>
   <script>
     const distributions = {"age_at_offense": {"kind": "numeric", "labels": ["5.0", "10.4", "15.9", "21.3", "26.8", "32.2", "37.6", "43.1", "48.5", "53.9", "59.4", "64.8", "70.2", "75.7", "81.1", "86.6"], "real": [3.26, 4.06, 10.905, 10.29, 12.52, 9.235, 10.695, 7.67, 7.6, 7.31, 5.61, 3.17, 2.885, 2.21, 0.705, 1.875], "synthetic": [4.385, 4.83, 8.675, 9.27, 11.885, 10.25, 11.58, 8.475, 7.565, 7.14, 4.535, 4.355, 2.48, 1.99, 1.15, 1.435]}, "race": {"kind": "categorical", "labels": ["White", "Asian", "Unknown", "Black or African American", "American Indian or Alaska Native", "Native Hawaiian or Other Pacific Islander"], "real": [62.335, 15.66, 12.825, 7.115, 1.27, 0.795], "synthetic": [61.78, 16.145, 12.86, 7.075, 1.295, 0.845]}, "sex": {"kind": "categorical", "labels": ["Female", "Male", "Unknown"], "real": [49.89, 48.66, 1.45], "synthetic": [49.62, 48.88, 1.5]}, "offense": {"kind": "categorical", "labels": ["Larceny/Theft Offenses - Shoplifting", "Larceny/Theft Offenses - Theft From Motor Vehicle", "Simple Assault", "Larceny/Theft Offenses - All Other Larceny", "Destruction/Damage/Vandalism of Property", "Larceny/Theft Offenses - Theft From Building", "Motor Vehicle Theft", "Burglary/Breaking & Entering", "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "Aggravated Assault", "Robbery", "Fraud Offenses - Identity Theft"], "real": [9.79, 9.385, 8.975, 8.445, 7.815, 5.18, 4.72, 4.675, 3.955, 3.715, 3.06, 2.94], "synthetic": [9.675, 9.255, 9.09, 8.52, 7.705, 5.395, 4.88, 4.735, 4.05, 3.74, 3.03, 3.07]}, "offense_date": {"kind": "datetime", "labels": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07"], "real": [13.315, 12.27, 13.815, 14.055, 14.825, 15.545, 16.175], "synthetic": [13.395, 12.88, 14.305, 14.115, 14.875, 14.805, 15.625]}};
-    const samples = [{"label": "2025-07-28 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 111, "synthetic_count": 108, "real_rows": [{"age_at_offense": "45", "race": "White", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-07-28"}, {"age_at_offense": "92", "race": "Unknown", "sex": "Male", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-07-28"}, {"age_at_offense": "43", "race": "White", "sex": "Male", "offense": "Motor Vehicle Theft", "offense_date": "2025-07-28"}, {"age_at_offense": "74", "race": "White", "sex": "Male", "offense": "Kidnapping/Abduction", "offense_date": "2025-07-28"}, {"age_at_offense": "28", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-07-28"}, {"age_at_offense": "30", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-07-28"}, {"age_at_offense": "29", "race": "Asian", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-07-28"}, {"age_at_offense": "38", "race": "White", "sex": "Female", "offense": "Fondling", "offense_date": "2025-07-28"}, {"age_at_offense": "45", "race": "Asian", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-07-28"}, {"age_at_offense": "18", "race": "Black or African American", "sex": "Male", "offense": "Simple Assault", "offense_date": "2025-07-28"}], "synthetic_rows": [{"age_at_offense": "29", "race": "White", "sex": "Female", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-07-28"}, {"age_at_offense": "27", "race": "Unknown", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-07-28"}, {"age_at_offense": "48", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-07-28"}, {"age_at_offense": "15", "race": "Unknown", "sex": "Female", "offense": "Robbery", "offense_date": "2025-07-28"}, {"age_at_offense": "20", "race": "White", "sex": "Female", "offense": "Motor Vehicle Theft", "offense_date": "2025-07-28"}, {"age_at_offense": "56", "race": "White", "sex": "Male", "offense": "Assisting or Promoting Prostitution", "offense_date": "2025-07-28"}, {"age_at_offense": "47", "race": "White", "sex": "Male", "offense": "Counterfeiting/Forgery", "offense_date": "2025-07-28"}, {"age_at_offense": "52", "race": "Black or African American", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-07-28"}, {"age_at_offense": "61", "race": "Unknown", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-07-28"}, {"age_at_offense": "14", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-07-28"}]}, {"label": "2025-03-23 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 94, "synthetic_count": 97, "real_rows": [{"age_at_offense": "56", "race": "White", "sex": "Female", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-03-23"}, {"age_at_offense": "42", "race": "Asian", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-03-23"}, {"age_at_offense": "46", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-23"}, {"age_at_offense": "42", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-03-23"}, {"age_at_offense": "27", "race": "Unknown", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-03-23"}, {"age_at_offense": "78", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-03-23"}, {"age_at_offense": "37", "race": "Asian", "sex": "Female", "offense": "Robbery", "offense_date": "2025-03-23"}, {"age_at_offense": "12", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-23"}, {"age_at_offense": "18", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-23"}, {"age_at_offense": "32", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-03-23"}], "synthetic_rows": [{"age_at_offense": "46", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-03-23"}, {"age_at_offense": "37", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-03-23"}, {"age_at_offense": "32", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Purse-snatching", "offense_date": "2025-03-23"}, {"age_at_offense": "11", "race": "White", "sex": "Female", "offense": "Drug Equipment Violations", "offense_date": "2025-03-23"}, {"age_at_offense": "76", "race": "White", "sex": "Female", "offense": "Aggravated Assault", "offense_date": "2025-03-23"}, {"age_at_offense": "21", "race": "White", "sex": "Female", "offense": "Intimidation", "offense_date": "2025-03-23"}, {"age_at_offense": "52", "race": "White", "sex": "Female", "offense": "Motor Vehicle Theft", "offense_date": "2025-03-23"}, {"age_at_offense": "67", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-03-23"}, {"age_at_offense": "52", "race": "Asian", "sex": "Unknown", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-03-23"}, {"age_at_offense": "40", "race": "White", "sex": "Male", "offense": "Aggravated Assault", "offense_date": "2025-03-23"}]}, {"label": "2025-06-19 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 110, "synthetic_count": 112, "real_rows": [{"age_at_offense": "50", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-06-19"}, {"age_at_offense": "48", "race": "White", "sex": "Female", "offense": "Rape", "offense_date": "2025-06-19"}, {"age_at_offense": "22", "race": "Unknown", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-06-19"}, {"age_at_offense": "27", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-06-19"}, {"age_at_offense": "84", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-06-19"}, {"age_at_offense": "32", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-06-19"}, {"age_at_offense": "51", "race": "Asian", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-06-19"}, {"age_at_offense": "50", "race": "White", "sex": "Male", "offense": "Fondling", "offense_date": "2025-06-19"}, {"age_at_offense": "85", "race": "Unknown", "sex": "Female", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-06-19"}, {"age_at_offense": "29", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-06-19"}], "synthetic_rows": [{"age_at_offense": "15", "race": "White", "sex": "Female", "offense": "Robbery", "offense_date": "2025-06-19"}, {"age_at_offense": "31", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-06-19"}, {"age_at_offense": "51", "race": "White", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-06-19"}, {"age_at_offense": "49", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Purse-snatching", "offense_date": "2025-06-19"}, {"age_at_offense": "62", "race": "White", "sex": "Female", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-06-19"}, {"age_at_offense": "26", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-06-19"}, {"age_at_offense": "51", "race": "Black or African American", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-06-19"}, {"age_at_offense": "34", "race": "Asian", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-06-19"}, {"age_at_offense": "48", "race": "Unknown", "sex": "Female", "offense": "Intimidation", "offense_date": "2025-06-19"}, {"age_at_offense": "25", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-06-19"}]}, {"label": "2025-02-26 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 110, "synthetic_count": 86, "real_rows": [{"age_at_offense": "42", "race": "White", "sex": "Male", "offense": "Simple Assault", "offense_date": "2025-02-26"}, {"age_at_offense": "86", "race": "White", "sex": "Male", "offense": "Drug/Narcotic Violations", "offense_date": "2025-02-26"}, {"age_at_offense": "16", "race": "White", "sex": "Male", "offense": "Fraud Offenses - Credit Card/ATM Fraud", "offense_date": "2025-02-26"}, {"age_at_offense": "73", "race": "White", "sex": "Female", "offense": "Fraud Offenses - Credit Card/ATM Fraud", "offense_date": "2025-02-26"}, {"age_at_offense": "8", "race": "White", "sex": "Male", "offense": "Aggravated Assault", "offense_date": "2025-02-26"}, {"age_at_offense": "52", "race": "White", "sex": "Male", "offense": "Sexual Assault With An Object", "offense_date": "2025-02-26"}, {"age_at_offense": "16", "race": "White", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-02-26"}, {"age_at_offense": "44", "race": "White", "sex": "Female", "offense": "Murder & Non-negligent Manslaughter", "offense_date": "2025-02-26"}, {"age_at_offense": "73", "race": "White", "sex": "Unknown", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-02-26"}, {"age_at_offense": "27", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-02-26"}], "synthetic_rows": [{"age_at_offense": "29", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-02-26"}, {"age_at_offense": "15", "race": "Asian", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-02-26"}, {"age_at_offense": "16", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-02-26"}, {"age_at_offense": "44", "race": "Asian", "sex": "Male", "offense": "Fraud Offenses - Impersonation", "offense_date": "2025-02-26"}, {"age_at_offense": "49", "race": "Asian", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-02-26"}, {"age_at_offense": "35", "race": "White", "sex": "Female", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-02-26"}, {"age_at_offense": "58", "race": "White", "sex": "Female", "offense": "Fondling", "offense_date": "2025-02-26"}, {"age_at_offense": "30", "race": "Black or African American", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-02-26"}, {"age_at_offense": "31", "race": "Unknown", "sex": "Female", "offense": "Stolen Property Offenses", "offense_date": "2025-02-26"}, {"age_at_offense": "51", "race": "Unknown", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-02-26"}]}, {"label": "2025-03-28 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 108, "synthetic_count": 89, "real_rows": [{"age_at_offense": "33", "race": "Asian", "sex": "Unknown", "offense": "Motor Vehicle Theft", "offense_date": "2025-03-28"}, {"age_at_offense": "35", "race": "Black or African American", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-03-28"}, {"age_at_offense": "50", "race": "White", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-03-28"}, {"age_at_offense": "45", "race": "White", "sex": "Male", "offense": "Aggravated Assault", "offense_date": "2025-03-28"}, {"age_at_offense": "22", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-28"}, {"age_at_offense": "28", "race": "White", "sex": "Male", "offense": "Intimidation", "offense_date": "2025-03-28"}, {"age_at_offense": "64", "race": "Asian", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-03-28"}, {"age_at_offense": "50", "race": "White", "sex": "Male", "offense": "Motor Vehicle Theft", "offense_date": "2025-03-28"}, {"age_at_offense": "52", "race": "White", "sex": "Male", "offense": "Motor Vehicle Theft", "offense_date": "2025-03-28"}, {"age_at_offense": "56", "race": "Black or African American", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-03-28"}], "synthetic_rows": [{"age_at_offense": "63", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-03-28"}, {"age_at_offense": "41", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-03-28"}, {"age_at_offense": "58", "race": "White", "sex": "Male", "offense": "Motor Vehicle Theft", "offense_date": "2025-03-28"}, {"age_at_offense": "9", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-03-28"}, {"age_at_offense": "24", "race": "White", "sex": "Female", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-03-28"}, {"age_at_offense": "55", "race": "White", "sex": "Male", "offense": "Sodomy", "offense_date": "2025-03-28"}, {"age_at_offense": "51", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-28"}, {"age_at_offense": "33", "race": "Asian", "sex": "Male", "offense": "Counterfeiting/Forgery", "offense_date": "2025-03-28"}, {"age_at_offense": "54", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-03-28"}, {"age_at_offense": "68", "race": "Asian", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-03-28"}]}, {"label": "2025-04-26 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 105, "synthetic_count": 90, "real_rows": [{"age_at_offense": "55", "race": "Asian", "sex": "Male", "offense": "Simple Assault", "offense_date": "2025-04-26"}, {"age_at_offense": "21", "race": "Black or African American", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-04-26"}, {"age_at_offense": "50", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-04-26"}, {"age_at_offense": "42", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-04-26"}, {"age_at_offense": "61", "race": "White", "sex": "Male", "offense": "Drug Equipment Violations", "offense_date": "2025-04-26"}, {"age_at_offense": "38", "race": "White", "sex": "Female", "offense": "Counterfeiting/Forgery", "offense_date": "2025-04-26"}, {"age_at_offense": "63", "race": "White", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-04-26"}, {"age_at_offense": "62", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-04-26"}, {"age_at_offense": "37", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-04-26"}, {"age_at_offense": "34", "race": "White", "sex": "Male", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-04-26"}], "synthetic_rows": [{"age_at_offense": "68", "race": "White", "sex": "Female", "offense": "Fraud Offenses - Credit Card/ATM Fraud", "offense_date": "2025-04-26"}, {"age_at_offense": "49", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-04-26"}, {"age_at_offense": "16", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-04-26"}, {"age_at_offense": "62", "race": "White", "sex": "Male", "offense": "Assisting or Promoting Prostitution", "offense_date": "2025-04-26"}, {"age_at_offense": "79", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-04-26"}, {"age_at_offense": "20", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-04-26"}, {"age_at_offense": "41", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-04-26"}, {"age_at_offense": "7", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-04-26"}, {"age_at_offense": "18", "race": "White", "sex": "Female", "offense": "Sexual Assault With An Object", "offense_date": "2025-04-26"}, {"age_at_offense": "29", "race": "Asian", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-04-26"}]}, {"label": "2025-05-10 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 99, "synthetic_count": 101, "real_rows": [{"age_at_offense": "40", "race": "American Indian or Alaska Native", "sex": "Female", "offense": "Stalking", "offense_date": "2025-05-10"}, {"age_at_offense": "22", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-05-10"}, {"age_at_offense": "88", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-05-10"}, {"age_at_offense": "17", "race": "Unknown", "sex": "Female", "offense": "Fondling", "offense_date": "2025-05-10"}, {"age_at_offense": "77", "race": "White", "sex": "Male", "offense": "Simple Assault", "offense_date": "2025-05-10"}, {"age_at_offense": "26", "race": "White", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-05-10"}, {"age_at_offense": "58", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Purse-snatching", "offense_date": "2025-05-10"}, {"age_at_offense": "32", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-05-10"}, {"age_at_offense": "48", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-05-10"}, {"age_at_offense": "11", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-05-10"}], "synthetic_rows": [{"age_at_offense": "43", "race": "White", "sex": "Male", "offense": "Sexual Assault With An Object", "offense_date": "2025-05-10"}, {"age_at_offense": "44", "race": "Asian", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-05-10"}, {"age_at_offense": "10", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-05-10"}, {"age_at_offense": "7", "race": "Black or African American", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-05-10"}, {"age_at_offense": "70", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-05-10"}, {"age_at_offense": "29", "race": "White", "sex": "Female", "offense": "Aggravated Assault", "offense_date": "2025-05-10"}, {"age_at_offense": "65", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Purse-snatching", "offense_date": "2025-05-10"}, {"age_at_offense": "49", "race": "Asian", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-05-10"}, {"age_at_offense": "63", "race": "Unknown", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-05-10"}, {"age_at_offense": "36", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-05-10"}]}, {"label": "2025-03-26 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "real_count": 98, "synthetic_count": 81, "real_rows": [{"age_at_offense": "63", "race": "White", "sex": "Female", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-03-26"}, {"age_at_offense": "41", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-03-26"}, {"age_at_offense": "38", "race": "Unknown", "sex": "Male", "offense": "Rape", "offense_date": "2025-03-26"}, {"age_at_offense": "37", "race": "White", "sex": "Female", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-03-26"}, {"age_at_offense": "87", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-03-26"}, {"age_at_offense": "35", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-03-26"}, {"age_at_offense": "44", "race": "Unknown", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-26"}, {"age_at_offense": "77", "race": "Asian", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-26"}, {"age_at_offense": "42", "race": "White", "sex": "Female", "offense": "Fondling", "offense_date": "2025-03-26"}, {"age_at_offense": "76", "race": "Unknown", "sex": "Male", "offense": "Embezzlement", "offense_date": "2025-03-26"}], "synthetic_rows": [{"age_at_offense": "41", "race": "White", "sex": "Female", "offense": "Aggravated Assault", "offense_date": "2025-03-26"}, {"age_at_offense": "62", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-03-26"}, {"age_at_offense": "10", "race": "American Indian or Alaska Native", "sex": "Male", "offense": "Kidnapping/Abduction", "offense_date": "2025-03-26"}, {"age_at_offense": "18", "race": "Unknown", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-03-26"}, {"age_at_offense": "69", "race": "White", "sex": "Male", "offense": "Robbery", "offense_date": "2025-03-26"}, {"age_at_offense": "80", "race": "Asian", "sex": "Male", "offense": "Counterfeiting/Forgery", "offense_date": "2025-03-26"}, {"age_at_offense": "43", "race": "Asian", "sex": "Male", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-03-26"}, {"age_at_offense": "51", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-26"}, {"age_at_offense": "45", "race": "White", "sex": "Female", "offense": "Motor Vehicle Theft", "offense_date": "2025-03-26"}, {"age_at_offense": "57", "race": "White", "sex": "Unknown", "offense": "Simple Assault", "offense_date": "2025-03-26"}]}];
+    const samples = [{"label": "2025-06-03 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 100, "synthetic_rows": [{"age_at_offense": "47", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-06-03"}, {"age_at_offense": "58", "race": "Unknown", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-06-03"}, {"age_at_offense": "26", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-06-03"}, {"age_at_offense": "54", "race": "White", "sex": "Female", "offense": "Intimidation", "offense_date": "2025-06-03"}, {"age_at_offense": "51", "race": "Black or African American", "sex": "Female", "offense": "Fraud Offenses - Credit Card/ATM Fraud", "offense_date": "2025-06-03"}, {"age_at_offense": "70", "race": "White", "sex": "Unknown", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-06-03"}, {"age_at_offense": "42", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-06-03"}, {"age_at_offense": "14", "race": "White", "sex": "Male", "offense": "Fraud Offenses - Impersonation", "offense_date": "2025-06-03"}, {"age_at_offense": "35", "race": "White", "sex": "Male", "offense": "Weapon Law Violations", "offense_date": "2025-06-03"}, {"age_at_offense": "27", "race": "Asian", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-06-03"}]}, {"label": "2025-06-15 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 78, "synthetic_rows": [{"age_at_offense": "12", "race": "Unknown", "sex": "Female", "offense": "Drug Equipment Violations", "offense_date": "2025-06-15"}, {"age_at_offense": "38", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-06-15"}, {"age_at_offense": "67", "race": "Unknown", "sex": "Male", "offense": "Counterfeiting/Forgery", "offense_date": "2025-06-15"}, {"age_at_offense": "26", "race": "White", "sex": "Female", "offense": "Robbery", "offense_date": "2025-06-15"}, {"age_at_offense": "22", "race": "White", "sex": "Male", "offense": "Motor Vehicle Theft", "offense_date": "2025-06-15"}, {"age_at_offense": "54", "race": "White", "sex": "Male", "offense": "Fraud Offenses - Credit Card/ATM Fraud", "offense_date": "2025-06-15"}, {"age_at_offense": "15", "race": "White", "sex": "Male", "offense": "Fraud Offenses - Credit Card/ATM Fraud", "offense_date": "2025-06-15"}, {"age_at_offense": "37", "race": "American Indian or Alaska Native", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-06-15"}, {"age_at_offense": "26", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-06-15"}, {"age_at_offense": "50", "race": "Asian", "sex": "Male", "offense": "Stalking", "offense_date": "2025-06-15"}]}, {"label": "2025-02-09 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 79, "synthetic_rows": [{"age_at_offense": "41", "race": "White", "sex": "Unknown", "offense": "Murder & Non-negligent Manslaughter", "offense_date": "2025-02-09"}, {"age_at_offense": "38", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-02-09"}, {"age_at_offense": "29", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-02-09"}, {"age_at_offense": "23", "race": "Black or African American", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-02-09"}, {"age_at_offense": "56", "race": "White", "sex": "Female", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-02-09"}, {"age_at_offense": "67", "race": "Black or African American", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-02-09"}, {"age_at_offense": "64", "race": "White", "sex": "Female", "offense": "Intimidation", "offense_date": "2025-02-09"}, {"age_at_offense": "60", "race": "White", "sex": "Male", "offense": "Aggravated Assault", "offense_date": "2025-02-09"}, {"age_at_offense": "44", "race": "White", "sex": "Female", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-02-09"}, {"age_at_offense": "66", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-02-09"}]}, {"label": "2025-06-05 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 92, "synthetic_rows": [{"age_at_offense": "51", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-06-05"}, {"age_at_offense": "22", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-06-05"}, {"age_at_offense": "36", "race": "Black or African American", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-06-05"}, {"age_at_offense": "8", "race": "Unknown", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-06-05"}, {"age_at_offense": "18", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-06-05"}, {"age_at_offense": "23", "race": "Black or African American", "sex": "Female", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-06-05"}, {"age_at_offense": "26", "race": "Unknown", "sex": "Female", "offense": "Aggravated Assault", "offense_date": "2025-06-05"}, {"age_at_offense": "46", "race": "White", "sex": "Male", "offense": "Simple Assault", "offense_date": "2025-06-05"}, {"age_at_offense": "16", "race": "White", "sex": "Male", "offense": "Counterfeiting/Forgery", "offense_date": "2025-06-05"}, {"age_at_offense": "22", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-06-05"}]}, {"label": "2025-02-02 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 82, "synthetic_rows": [{"age_at_offense": "24", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-02-02"}, {"age_at_offense": "31", "race": "Black or African American", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-02-02"}, {"age_at_offense": "39", "race": "White", "sex": "Male", "offense": "Rape", "offense_date": "2025-02-02"}, {"age_at_offense": "29", "race": "Unknown", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-02-02"}, {"age_at_offense": "55", "race": "White", "sex": "Male", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-02-02"}, {"age_at_offense": "22", "race": "Asian", "sex": "Female", "offense": "Aggravated Assault", "offense_date": "2025-02-02"}, {"age_at_offense": "53", "race": "Unknown", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-02-02"}, {"age_at_offense": "23", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-02-02"}, {"age_at_offense": "66", "race": "White", "sex": "Female", "offense": "Drug Equipment Violations", "offense_date": "2025-02-02"}, {"age_at_offense": "34", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-02-02"}]}, {"label": "2025-03-07 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 104, "synthetic_rows": [{"age_at_offense": "50", "race": "Black or African American", "sex": "Male", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-03-07"}, {"age_at_offense": "26", "race": "Asian", "sex": "Male", "offense": "Larceny/Theft Offenses - All Other Larceny", "offense_date": "2025-03-07"}, {"age_at_offense": "13", "race": "White", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-03-07"}, {"age_at_offense": "44", "race": "Unknown", "sex": "Female", "offense": "Simple Assault", "offense_date": "2025-03-07"}, {"age_at_offense": "44", "race": "Black or African American", "sex": "Male", "offense": "Robbery", "offense_date": "2025-03-07"}, {"age_at_offense": "24", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Shoplifting", "offense_date": "2025-03-07"}, {"age_at_offense": "52", "race": "Asian", "sex": "Male", "offense": "Drug Equipment Violations", "offense_date": "2025-03-07"}, {"age_at_offense": "62", "race": "Black or African American", "sex": "Female", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-03-07"}, {"age_at_offense": "40", "race": "Unknown", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-03-07"}, {"age_at_offense": "50", "race": "White", "sex": "Female", "offense": "Weapon Law Violations", "offense_date": "2025-03-07"}]}, {"label": "2025-04-15 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 110, "synthetic_rows": [{"age_at_offense": "64", "race": "White", "sex": "Female", "offense": "Fraud Offenses - Identity Theft", "offense_date": "2025-04-15"}, {"age_at_offense": "59", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-04-15"}, {"age_at_offense": "18", "race": "White", "sex": "Male", "offense": "Fraud Offenses - False Pretenses/Swindle/Confidence Game", "offense_date": "2025-04-15"}, {"age_at_offense": "27", "race": "White", "sex": "Male", "offense": "Motor Vehicle Theft", "offense_date": "2025-04-15"}, {"age_at_offense": "28", "race": "Black or African American", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-04-15"}, {"age_at_offense": "46", "race": "Asian", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-04-15"}, {"age_at_offense": "12", "race": "White", "sex": "Female", "offense": "Motor Vehicle Theft", "offense_date": "2025-04-15"}, {"age_at_offense": "10", "race": "White", "sex": "Female", "offense": "Intimidation", "offense_date": "2025-04-15"}, {"age_at_offense": "85", "race": "Unknown", "sex": "Male", "offense": "Simple Assault", "offense_date": "2025-04-15"}, {"age_at_offense": "34", "race": "White", "sex": "Male", "offense": "Larceny/Theft Offenses - Theft From Motor Vehicle", "offense_date": "2025-04-15"}]}, {"label": "2025-05-25 (source contains dates without times)", "columns": ["age_at_offense", "race", "sex", "offense", "offense_date"], "synthetic_count": 95, "synthetic_rows": [{"age_at_offense": "7", "race": "White", "sex": "Female", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-05-25"}, {"age_at_offense": "24", "race": "White", "sex": "Female", "offense": "Larceny/Theft Offenses - Theft From Building", "offense_date": "2025-05-25"}, {"age_at_offense": "73", "race": "White", "sex": "Male", "offense": "Burglary/Breaking & Entering", "offense_date": "2025-05-25"}, {"age_at_offense": "53", "race": "White", "sex": "Female", "offense": "Fondling", "offense_date": "2025-05-25"}, {"age_at_offense": "66", "race": "Asian", "sex": "Female", "offense": "Drug/Narcotic Violations", "offense_date": "2025-05-25"}, {"age_at_offense": "10", "race": "White", "sex": "Female", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-05-25"}, {"age_at_offense": "34", "race": "Unknown", "sex": "Female", "offense": "Fraud Offenses - Impersonation", "offense_date": "2025-05-25"}, {"age_at_offense": "70", "race": "White", "sex": "Female", "offense": "Motor Vehicle Theft", "offense_date": "2025-05-25"}, {"age_at_offense": "63", "race": "White", "sex": "Male", "offense": "Destruction/Damage/Vandalism of Property", "offense_date": "2025-05-25"}, {"age_at_offense": "42", "race": "White", "sex": "Male", "offense": "Simple Assault", "offense_date": "2025-05-25"}]}];
     document.querySelectorAll('.tab-button').forEach(button => button.addEventListener('click', () => {
       document.querySelectorAll('.tab-button').forEach(item => item.classList.toggle('active', item === button));
       document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab.id === button.dataset.tab));
@@ -357,8 +430,7 @@
       if (!samples.length) return;
       const item = samples[sampleIndex % samples.length];
       document.getElementById('sample-label').textContent = item.label;
-      document.getElementById('sample-counts').textContent = `Real ${item.real_count.toLocaleString()} | Synthetic ${item.synthetic_count.toLocaleString()}`;
-      document.getElementById('real-sample').innerHTML = sampleTable(item.columns, item.real_rows);
+      document.getElementById('sample-counts').textContent = `Synthetic records in this view: ${item.synthetic_count.toLocaleString()}`;
       document.getElementById('synthetic-sample').innerHTML = sampleTable(item.columns, item.synthetic_rows);
     }
     document.getElementById('next-sample').addEventListener('click', () => { sampleIndex += 1; renderSample(); }); renderSample();

@@ -25,8 +25,10 @@ def write_tabular_dashboard(
 ) -> Path:
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    html = _render_dashboard(real_df, synthetic_df, report)
+    html = "\n".join(line.rstrip() for line in html.splitlines()) + "\n"
     target.write_text(
-        _render_dashboard(real_df, synthetic_df, report),
+        html,
         encoding="utf-8",
     )
     return target
@@ -42,26 +44,25 @@ def _fmt(value: Any, digits: int = 3) -> str:
     return str(value)
 
 
-def _status_class(gap: Any) -> str:
-    if gap is None:
-        return "neutral"
-    value = float(gap)
-    if value <= 0.1:
-        return "good"
-    if value < 0.5:
-        return "review"
-    return "high"
-
-
-def _paired_metric(label: str, real: Any, synthetic: Any, gap: Any, note: str) -> str:
+def _paired_metric(item: dict[str, Any]) -> str:
+    sdtype = item.get("sdtype", "categorical")
+    if sdtype == "numerical":
+        source_label = "Source median"
+        synthetic_label = "Synthetic median"
+    elif sdtype == "datetime":
+        source_label = "Source minimum"
+        synthetic_label = "Synthetic minimum"
+    else:
+        source_label = "Source categories"
+        synthetic_label = "Synthetic categories"
     return f"""
-      <div class="paired-metric {_status_class(gap)}">
-        <div class="metric-label">{escape(label)}</div>
+      <div class="paired-metric neutral">
+        <div class="metric-label">{escape(str(item.get("column", "")))}</div>
         <div class="paired-values">
-          <span><b>{escape(_fmt(real))}</b><small>Real</small></span>
-          <span><b>{escape(_fmt(synthetic))}</b><small>Synthetic</small></span>
+          <span><b>{escape(_fmt(item.get("real_value")))}</b><small>{source_label}</small></span>
+          <span><b>{escape(_fmt(item.get("synthetic_value")))}</b><small>{synthetic_label}</small></span>
         </div>
-        <div class="metric-foot"><strong>Gap {_fmt(gap)}</strong><span>{escape(note)}</span></div>
+        <div class="metric-foot"><strong>{escape(str(item.get("metric", "Gap")))} {_fmt(item.get("gap"))}</strong><span>Lower means closer for this metric</span></div>
       </div>
     """
 
@@ -133,10 +134,15 @@ def _distribution_payload(
         else:
             real_counts = real.fillna("<Missing>").astype(str).value_counts()
             synth_counts = synthetic.fillna("<Missing>").astype(str).value_counts()
+            rare_threshold = int(
+                report.get("pipeline", {}).get("rare_category_threshold", 5)
+            )
+            common_source_counts = real_counts[real_counts >= rare_threshold]
             labels = list(
                 (
-                    real_counts / max(real_counts.sum(), 1)
-                    + synth_counts / max(synth_counts.sum(), 1)
+                    common_source_counts / max(real_counts.sum(), 1)
+                    + synth_counts.reindex(common_source_counts.index, fill_value=0)
+                    / max(synth_counts.sum(), 1)
                 )
                 .sort_values(ascending=False)
                 .head(12)
@@ -194,11 +200,10 @@ def _sample_windows(
             )
         return output
 
-    if date_columns:
+    if date_columns and not parse_datetime(synthetic_df[date_columns[0]]).dropna().empty:
         column = date_columns[0]
-        real_dates = parse_datetime(real_df[column])
         synthetic_dates = parse_datetime(synthetic_df[column])
-        usable = real_dates.dropna()
+        usable = synthetic_dates.dropna()
         has_time = bool(((usable.dt.hour != 0) | (usable.dt.minute != 0)).any())
         for _ in range(min(8, max(1, len(usable)))):
             anchor = usable.iloc[int(rng.integers(0, len(usable)))]
@@ -210,24 +215,17 @@ def _sample_windows(
                 start = anchor.floor("D")
                 end = start + pd.Timedelta(days=1)
                 label = f"{start.date()} (source contains dates without times)"
-            real_mask = (real_dates >= start) & (real_dates < end)
             synth_mask = (synthetic_dates >= start) & (synthetic_dates < end)
             windows.append(
                 {
                     "label": label,
                     "columns": display_columns,
-                    "real_count": int(real_mask.sum()),
                     "synthetic_count": int(synth_mask.sum()),
-                    "real_rows": records(real_df.loc[real_mask]),
                     "synthetic_rows": records(synthetic_df.loc[synth_mask]),
                 }
             )
     else:
         for _ in range(5):
-            real_sample = real_df.sample(
-                n=min(10, len(real_df)),
-                random_state=int(rng.integers(0, 1_000_000)),
-            )
             synthetic_sample = synthetic_df.sample(
                 n=min(10, len(synthetic_df)),
                 random_state=int(rng.integers(0, 1_000_000)),
@@ -236,9 +234,7 @@ def _sample_windows(
                 {
                     "label": "Random row sample (no modeled date/time field)",
                     "columns": display_columns,
-                    "real_count": len(real_sample),
                     "synthetic_count": len(synthetic_sample),
-                    "real_rows": records(real_sample),
                     "synthetic_rows": records(synthetic_sample),
                 }
             )
@@ -261,7 +257,7 @@ def _advanced_rows(report: dict[str, Any]) -> str:
               <td>{escape(str(item.get("sdtype", "")))}</td>
               <td data-sort="{item.get("real_value", "")}">{escape(_fmt(item.get("real_value")))}</td>
               <td data-sort="{item.get("synthetic_value", "")}">{escape(_fmt(item.get("synthetic_value")))}</td>
-              <td data-sort="{gap if gap is not None else 999}" class="{_status_class(gap)}-text">{escape(_fmt(gap))}</td>
+              <td data-sort="{gap if gap is not None else 999}">{escape(str(item.get("metric", "Gap")))}: {escape(_fmt(gap))}</td>
               <td data-sort="{score if score is not None else -1}">{escape(_fmt(score))}</td>
             </tr>
             """
@@ -276,7 +272,7 @@ def _consistency_panel(report: dict[str, Any]) -> str:
         return """
         <section>
           <div class="section-head"><div><h2>Run Stability</h2><p>This dashboard contains one seed.</p></div></div>
-          <div class="callout">Choose the three-seed stability check in the local app to measure whether quality and field gaps remain consistent across repeated runs.</div>
+          <div class="callout">One seed is exploratory evidence. Run three independent seeds before preparing a release-review package.</div>
         </section>
         """
     rows = "".join(
@@ -314,30 +310,111 @@ def _distance_panel(report: dict[str, Any]) -> str:
     if not screens.get("available"):
         return ""
     distance = screens.get("distance_to_closest_record", {})
-    nndr = screens.get("nearest_neighbor_distance_ratio", {}).get(
-        "synthetic_to_real_train",
-        {},
+    nndr_info = screens.get("nearest_neighbor_distance_ratio", {})
+    nndr = nndr_info.get(
+        "synthetic_to_source_benchmark",
+        nndr_info.get("synthetic_to_real_train", {}),
     )
-    synthetic_dcr = distance.get("holdout_to_synthetic", {}).get("median")
-    benchmark_dcr = distance.get("holdout_to_real_train_benchmark", {}).get(
-        "median"
+    source_to_synthetic = distance.get(
+        "source_reference_to_synthetic",
+        distance.get("holdout_to_synthetic", {}),
     )
+    source_to_source = distance.get(
+        "source_reference_to_source_benchmark",
+        distance.get("holdout_to_real_train_benchmark", {}),
+    )
+    synthetic_dcr = source_to_synthetic.get("median")
+    benchmark_dcr = source_to_source.get("median")
     ratio = distance.get("median_distance_ratio")
-    ratio_status = (
-        "good" if ratio is not None and ratio >= 0.8 else "review"
-    )
     nndr_median = nndr.get("median")
-    nndr_status = (
-        "good" if nndr_median is not None and nndr_median >= 0.5 else "review"
-    )
     return f"""
       <section>
-        <div class="section-head"><div><h2>Record Distance Screens</h2><p>Sampled proximity checks benchmarked against a protected real holdout.</p></div></div>
+        <div class="section-head"><div><h2>Record-distance Review Screen</h2><p>Sampled proximity evidence; no universal pass threshold is asserted.</p></div></div>
         <div class="privacy-grid">
-          {_privacy_metric("Holdout to synthetic median", synthetic_dcr, "neutral", "Distance to the closest sampled synthetic row.")}
-          {_privacy_metric("Holdout to real benchmark", benchmark_dcr, "neutral", "Distance between held-out and training real rows.")}
-          {_privacy_metric("DCR benchmark ratio", ratio, ratio_status, "Values materially below 1 require review.")}
-          {_privacy_metric("Synthetic NNDR median", nndr_median, nndr_status, "Values near zero indicate a row may be unusually close to one training row.")}
+          {_privacy_metric("Source reference to synthetic", synthetic_dcr, "neutral", "Median nearest-record distance in the sampled comparison.")}
+          {_privacy_metric("Source-to-source benchmark", benchmark_dcr, "neutral", "Median distance between two sampled source subsets.")}
+          {_privacy_metric("Median distance ratio", ratio, "neutral", "Synthetic proximity divided by the source benchmark.")}
+          {_privacy_metric("Synthetic NNDR median", nndr_median, "neutral", "Nearest distance divided by second-nearest distance.")}
+          {_privacy_metric("DCR lower-tail p01", source_to_synthetic.get("p01"), "neutral", "The closest 1% tail needs particular review.")}
+          {_privacy_metric("NNDR lower-tail p01", nndr.get("p01"), "neutral", "Very low tail values may indicate unusually close rows.")}
+        </div>
+        <div class="evidence-notes">
+          <p><strong>Comparison data:</strong> {escape(str(screens.get("comparison_data", "Source-reference subsets sampled from the same source data used to fit the synthesizer. This is not an independent holdout evaluation.")))}</p>
+          <p><strong>Columns:</strong> {escape(", ".join(screens.get("columns", [])) or "None")} | <strong>Sample per group:</strong> {_fmt(screens.get("sample_size"))}</p>
+          <p><strong>Distance and encoding:</strong> {escape(str(screens.get("distance", "Euclidean distance.")))} {escape(str(screens.get("encoding", "")))}</p>
+          <p><strong>DCR ratio formula:</strong> {escape(str(distance.get("formula", "Not documented.")))}</p>
+          <p><strong>NNDR formula:</strong> {escape(str(nndr_info.get("formula", "Not documented.")))}</p>
+        </div>
+      </section>
+    """
+
+
+def _quality_composition_panel(report: dict[str, Any]) -> str:
+    quality = report.get("quality", {})
+    properties = {
+        str(item.get("Property")): item.get("Score")
+        for item in quality.get("properties", [])
+    }
+    shapes = quality.get("column_shapes", [])
+    pairs = quality.get("column_pair_trends", [])
+    modeled_count = len(report.get("pipeline", {}).get("modeled_columns", []))
+    possible_pairs = modeled_count * (modeled_count - 1) // 2
+    pair_score = properties.get("Column Pair Trends")
+    pair_note = (
+        f"{len(pairs)} pair records; aggregate score unavailable in this run."
+        if pair_score is None
+        else f"SDV scored {len(pairs)} of {possible_pairs} possible field pairs."
+    )
+    diagnostic = quality.get("diagnostic_score")
+    gate_label = "Passed" if diagnostic is not None and float(diagnostic) == 1.0 else "Review"
+    scope = quality.get("metric_scope", {})
+    return f"""
+      <section>
+        <div class="section-head"><div><h2>Quality Composition</h2><p>Statistical resemblance, separated from privacy evidence.</p></div></div>
+        <div class="privacy-grid">
+          {_privacy_metric("Column distributions", properties.get("Column Shapes"), "neutral", f"SDV evaluated {len(shapes)} modeled fields.")}
+          {_privacy_metric("Column-pair trends", pair_score, "neutral", pair_note)}
+          {_privacy_metric("Basic validity gate", gate_label, "neutral", f"Diagnostic score {_fmt(diagnostic)}; checks validity, not privacy.")}
+        </div>
+        <div class="evidence-notes">
+          <p><strong>Data used:</strong> {escape(str(scope.get("fidelity", "Full source data used for fitting compared with generated synthetic data; this is training-data fidelity.")))}</p>
+          <p><strong>Overall score:</strong> {escape(str(scope.get("overall_score_meaning", "SDV overall quality is an aggregate of the quality components SDV could score in this run. See the component breakdown; it is not a privacy or row-level accuracy score.")))}</p>
+          <p><strong>Diagnostic:</strong> {escape(str(scope.get("diagnostic_meaning", "A basic validity gate for data types, ranges, and structural rules; not a privacy score.")))}</p>
+        </div>
+      </section>
+    """
+
+
+def _treatment_panel(report: dict[str, Any]) -> str:
+    treatment = report.get("treatment_summary", {})
+    pipeline = report.get("pipeline", {})
+    rare_changes = treatment.get(
+        "rare_category_changes",
+        pipeline.get("rare_category_changes", {}),
+    )
+    grouped_fields = len(rare_changes)
+    grouped_rows = sum(
+        int(item.get("source_rows_grouped", 0)) for item in rare_changes.values()
+    )
+    repairs = treatment.get(
+        "post_generation_repairs",
+        pipeline.get("learned_constraints", []),
+    )
+    versions = report.get("software_versions", {})
+    return f"""
+      <section>
+        <div class="section-head"><div><h2>Treatments, Repairs, and Versions</h2><p>What changed before fitting and after generation.</p></div></div>
+        <div class="two-col">
+          <div class="evidence-notes">
+            <p><strong>Identifiers:</strong> {escape(str(treatment.get("identifier_treatment", "Direct and record identifiers were excluded from model fitting and regenerated after sampling.")))}</p>
+            <p><strong>Excluded fields:</strong> {escape(", ".join(treatment.get("excluded_identifier_columns", pipeline.get("excluded_identifier_columns", []))) or "None")}</p>
+            <p><strong>Rare-category grouping:</strong> threshold {_fmt(treatment.get("rare_category_threshold", pipeline.get("rare_category_threshold")))}; {grouped_fields} fields and {grouped_rows:,} source rows affected.</p>
+          </div>
+          <div class="evidence-notes">
+            <p><strong>Type overrides:</strong> {len(treatment.get("metadata_type_overrides", pipeline.get("metadata_type_overrides", {})))}</p>
+            <p><strong>Post-generation repairs:</strong> {len(repairs)} documented operations.</p>
+            <p><strong>Software:</strong> {escape(" | ".join(f"{key} {value}" for key, value in versions.items()) or "Not documented")}</p>
+          </div>
         </div>
       </section>
     """
@@ -354,16 +431,7 @@ def _render_dashboard(
     runtime = report.get("runtime", {})
     metrics = quality.get("column_metrics", [])
     overview_metrics = metrics[:4]
-    paired = "".join(
-        _paired_metric(
-            item["column"],
-            item.get("real_value"),
-            item.get("synthetic_value"),
-            item.get("gap"),
-            item.get("metric", ""),
-        )
-        for item in overview_metrics
-    )
+    paired = "".join(_paired_metric(item) for item in overview_metrics)
     direct = privacy.get("direct_identifier_overlap", {}).get(
         "exact_identity_combination", {}
     )
@@ -376,11 +444,7 @@ def _render_dashboard(
     methodology = report.get("methodology", "")
     method_label = pipeline.get("method", "").replace("_", " ").title()
     run_count = int(report.get("consistency", {}).get("run_count", 1))
-    run_subtitle = (
-        f"{run_count} independent local synthesis runs, shown without source identifiers"
-        if run_count > 1
-        else "One local synthesis run, shown without source identifiers"
-    )
+    run_subtitle = "Shareable aggregate evidence; no real source records are embedded"
     total_label = "All runs total" if run_count > 1 else "Total"
     basic_runtime_label = "All runs time" if run_count > 1 else "Run time"
     distributions_json = json.dumps(distribution_payload).replace("</", "<\\/")
@@ -404,7 +468,7 @@ def _render_dashboard(
     header {{ background:#fff; border-bottom:1px solid var(--line); padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; }}
     h1 {{ font-size:21px; margin:0; }}
     .subtitle {{ color:var(--muted); font-size:13px; margin-top:3px; }}
-    .offline {{ font-size:12px; font-weight:700; color:var(--good); }}
+    .offline {{ font-size:12px; font-weight:700; color:var(--review); }}
     nav {{ max-width:1400px; margin:0 auto; padding:12px 20px 0; display:flex; gap:4px; }}
     nav button {{ border:1px solid var(--line); background:#fff; color:var(--ink); padding:9px 15px; border-radius:6px 6px 0 0; cursor:pointer; font-weight:700; }}
     nav button.active {{ background:var(--accent); color:#fff; border-color:var(--accent); }}
@@ -422,7 +486,6 @@ def _render_dashboard(
     .dot {{ width:9px; height:9px; display:inline-block; margin-right:5px; border-radius:50%; }}
     .paired-grid {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }}
     .paired-metric {{ border:1px solid var(--line); border-top:4px solid #8c9692; padding:11px; min-width:0; }}
-    .paired-metric.good {{ border-top-color:var(--good); }} .paired-metric.review {{ border-top-color:#d29a21; }} .paired-metric.high {{ border-top-color:var(--high); }}
     .metric-label {{ font-size:12px; font-weight:750; min-height:30px; }}
     .paired-values {{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }}
     .paired-values span:first-child {{ color:var(--real); }} .paired-values span:last-child {{ color:var(--synthetic); }}
@@ -440,13 +503,16 @@ def _render_dashboard(
     .bar-group label {{ position:absolute; top:calc(100% + 7px); width:80px; left:50%; transform:translateX(-50%) rotate(-25deg); transform-origin:top center; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }}
     .sample-head {{ display:flex; justify-content:space-between; align-items:center; gap:12px; }}
     .sample-meta {{ color:var(--muted); font-size:12px; margin:8px 0; }}
-    .sample-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
-    .sample-pane h3 {{ font-size:13px; margin:0 0 7px; }} .sample-pane:first-child h3 {{ color:var(--real); }} .sample-pane:last-child h3 {{ color:var(--synthetic); }}
+    .sample-grid {{ display:grid; grid-template-columns:1fr; gap:12px; }}
+    .sample-pane h3 {{ font-size:13px; margin:0 0 7px; color:var(--synthetic); }}
     .table-wrap {{ overflow:auto; max-height:320px; border:1px solid var(--line); }}
     table {{ border-collapse:collapse; width:100%; font-size:11px; background:#fff; }}
     th,td {{ border-bottom:1px solid #e4e8e5; padding:7px 8px; text-align:left; white-space:nowrap; }}
     th {{ position:sticky; top:0; background:#eef2ef; cursor:pointer; z-index:1; }}
     .callout {{ border-left:4px solid var(--accent); background:#eef5f3; padding:11px 13px; font-size:12px; line-height:1.5; }}
+    .positioning {{ border-left-color:var(--review); background:var(--review-bg); margin-top:0; }}
+    .evidence-notes {{ margin-top:12px; border:1px solid var(--line); padding:10px 12px; font-size:11px; color:var(--muted); line-height:1.5; }}
+    .evidence-notes p {{ margin:4px 0; }}
     .two-col {{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }}
     .claims ul {{ margin:8px 0 0; padding-left:18px; font-size:12px; line-height:1.6; }}
     .good-text {{ color:var(--good); font-weight:750; }} .review-text {{ color:var(--review); font-weight:750; }} .high-text {{ color:var(--high); font-weight:750; }}
@@ -458,7 +524,7 @@ def _render_dashboard(
 <body>
   <header>
     <div><h1>SyntheticCAD Validation</h1><div class="subtitle">{run_subtitle}</div></div>
-    <div class="offline">Processed locally</div>
+    <div class="offline">Agency review required</div>
   </header>
   <nav>
     <button class="tab-button active" data-tab="basic">Basic Overview</button>
@@ -466,8 +532,9 @@ def _render_dashboard(
   </nav>
   <main>
     <div id="basic" class="tab active">
+      <div class="callout positioning"><strong>Evidence generated - agency review required.</strong> SyntheticCAD creates candidate synthetic data and an auditable evidence package for agency review. It does not certify that data is risk-free, legally unrestricted, or suitable for every research use.</div>
       <div class="summary-strip">
-        <div class="summary-item"><small>Real rows</small><b>{_fmt(pipeline.get("source_rows"))}</b></div>
+        <div class="summary-item"><small>Source rows evaluated</small><b>{_fmt(pipeline.get("source_rows"))}</b></div>
         <div class="summary-item"><small>Synthetic rows</small><b>{_fmt(pipeline.get("synthetic_rows"))}</b></div>
         <div class="summary-item"><small>Modeled fields</small><b>{_fmt(len(modeled_columns))}</b></div>
         <div class="summary-item"><small>Identifiers replaced</small><b>{_fmt(len(excluded))}</b></div>
@@ -476,8 +543,7 @@ def _render_dashboard(
 
       <section>
         <div class="section-head">
-          <div><h2>Key Pattern Comparisons</h2><p>Each tile uses one real value, one synthetic value, and the measured distribution gap.</p></div>
-          <div class="thresholds">Gap <= 0.10 green | 0.10-0.50 review | >= 0.50 high</div>
+          <div><h2>Key Pattern Comparisons</h2><p>Four featured fields. The label on each tile names its statistic and gap formula; all fields are in Advanced Evidence.</p></div>
         </div>
         <div class="paired-grid">{paired or '<div class="callout">No comparable modeled fields were available.</div>'}</div>
       </section>
@@ -487,9 +553,9 @@ def _render_dashboard(
           <div><h2>Privacy Evidence</h2><p>Observed overlap checks for this run. These are measurements, not a formal privacy guarantee.</p></div>
         </div>
         <div class="privacy-grid">
-          {_privacy_metric("Exact source identities reproduced", direct.get("matching_synthetic_rows", 0), "good" if direct.get("matching_synthetic_rows", 0) == 0 else "high", "Uses all selected direct identifier fields together.")}
-          {_privacy_metric("Exact modeled rows reproduced", exact_rows.get("matching_synthetic_rows", 0), "good" if exact_rows.get("matching_synthetic_rows", 0) == 0 else "review", "Exact agreement across every modeled field.")}
-          {_privacy_metric("Rare source combinations exposed", rare.get("source_rare_combinations_present_in_synthetic", 0), "good" if rare.get("presence_rate", 0) <= 0.1 else "review", f"{_fmt(100 * rare.get('presence_rate', 0), 1)}% of tested rare combinations.")}
+          {_privacy_metric("Exact identity combinations", direct.get("matching_synthetic_rows", 0), "neutral", f"{_fmt(direct.get('matching_synthetic_rows', 0))} of {_fmt(pipeline.get('synthetic_rows'))} synthetic rows ({_fmt(100 * direct.get('match_rate', 0), 2)}%). Fields: {', '.join(direct.get('columns', [])) or 'none selected'}.")}
+          {_privacy_metric("Exact modeled rows", exact_rows.get("matching_synthetic_rows", 0), "neutral", f"{_fmt(exact_rows.get('matching_synthetic_rows', 0))} of {_fmt(pipeline.get('synthetic_rows'))} synthetic rows ({_fmt(100 * exact_rows.get('match_rate', 0), 2)}%) matched every modeled field.")}
+          {_privacy_metric("Rare combinations present", rare.get("source_rare_combinations_present_in_synthetic", 0), "neutral", f"{_fmt(rare.get('source_rare_combinations_present_in_synthetic', 0))} of {_fmt(rare.get('source_rare_combinations', 0))} tested source combinations ({_fmt(100 * rare.get('presence_rate', 0), 1)}%).")}
         </div>
       </section>
 
@@ -504,12 +570,12 @@ def _render_dashboard(
 
       <section>
         <div class="sample-head">
-          <div><h2>Random Sample Check</h2><div class="sample-meta" id="sample-label"></div></div>
+          <div><h2>Synthetic Record Spot Check</h2><div class="sample-meta" id="sample-label"></div></div>
           <button class="action" id="next-sample">Show another sample</button>
         </div>
+        <div class="callout">This shareable dashboard contains no real source records. Source data can be inspected only inside the local application.</div>
         <div class="sample-meta" id="sample-counts"></div>
         <div class="sample-grid">
-          <div class="sample-pane"><h3>Real records (identifier fields excluded)</h3><div class="table-wrap" id="real-sample"></div></div>
           <div class="sample-pane"><h3>Synthetic records</h3><div class="table-wrap" id="synthetic-sample"></div></div>
         </div>
       </section>
@@ -517,25 +583,27 @@ def _render_dashboard(
 
     <div id="advanced" class="tab">
       <div class="summary-strip">
-        <div class="summary-item"><small>SDV overall quality</small><b>{_fmt(quality.get("overall_score"))}</b></div>
-        <div class="summary-item"><small>SDV diagnostic</small><b>{_fmt(quality.get("diagnostic_score"))}</b></div>
+        <div class="summary-item"><small>Overall similarity (secondary)</small><b>{_fmt(quality.get("overall_score"))}</b></div>
+        <div class="summary-item"><small>Basic validity gate</small><b>{"Passed" if quality.get("diagnostic_score") == 1.0 else "Review"}</b></div>
         <div class="summary-item"><small>Prepare</small><b>{_fmt(runtime.get("preparation_seconds"))} sec</b></div>
         <div class="summary-item"><small>Fit</small><b>{_fmt(runtime.get("fit_seconds"))} sec</b></div>
         <div class="summary-item"><small>Sample</small><b>{_fmt(runtime.get("sample_seconds"))} sec</b></div>
         <div class="summary-item"><small>Evaluate</small><b>{_fmt(runtime.get("evaluation_seconds"))} sec</b></div>
         <div class="summary-item"><small>{total_label}</small><b>{_fmt(runtime.get("total_all_runs_seconds", runtime.get("total_seconds")))} sec</b></div>
       </div>
+      {_quality_composition_panel(report)}
       <section>
-        <div class="section-head"><div><h2>Sortable Field Metrics</h2><p>Click a column heading to sort. Lower gap is better; higher SDV shape score is better.</p></div></div>
+        <div class="section-head"><div><h2>Sortable Field Metrics</h2><p>Click a column heading to sort. Source summary means median for numeric, minimum for datetime, and category count for categorical fields.</p></div></div>
         <div class="table-wrap" style="max-height:520px">
           <table id="metrics-table">
-            <thead><tr><th>Field</th><th>Type</th><th>Real</th><th>Synthetic</th><th>Gap</th><th>SDV shape score</th></tr></thead>
+            <thead><tr><th>Field</th><th>Type</th><th>Source summary</th><th>Synthetic summary</th><th>Named gap</th><th>SDV shape score</th></tr></thead>
             <tbody>{_advanced_rows(report)}</tbody>
           </table>
         </div>
       </section>
       {_consistency_panel(report)}
       {_distance_panel(report)}
+      {_treatment_panel(report)}
       <section class="two-col claims">
         <div><h2>What This Run Supports</h2><ul>{"".join(f"<li>{escape(item)}</li>" for item in report.get("claims", {}).get("supported", []))}</ul></div>
         <div><h2>What This Run Does Not Claim</h2><ul>{"".join(f"<li>{escape(item)}</li>" for item in report.get("claims", {}).get("not_claimed", []))}</ul></div>
@@ -583,8 +651,7 @@ def _render_dashboard(
       if (!samples.length) return;
       const item = samples[sampleIndex % samples.length];
       document.getElementById('sample-label').textContent = item.label;
-      document.getElementById('sample-counts').textContent = `Real ${{item.real_count.toLocaleString()}} | Synthetic ${{item.synthetic_count.toLocaleString()}}`;
-      document.getElementById('real-sample').innerHTML = sampleTable(item.columns, item.real_rows);
+      document.getElementById('sample-counts').textContent = `Synthetic records in this view: ${{item.synthetic_count.toLocaleString()}}`;
       document.getElementById('synthetic-sample').innerHTML = sampleTable(item.columns, item.synthetic_rows);
     }}
     document.getElementById('next-sample').addEventListener('click', () => {{ sampleIndex += 1; renderSample(); }}); renderSample();
