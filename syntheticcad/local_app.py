@@ -90,15 +90,87 @@ def _resolve_path(value: str, must_exist: bool = False) -> Path:
     return path
 
 
-def _artifact(path: Path, label: str, primary: bool = False) -> dict[str, Any]:
+def _artifact(
+    path: Path,
+    label: str,
+    primary: bool = False,
+    view: bool = False,
+    download: bool = False,
+    back: Path | None = None,
+) -> dict[str, Any]:
     resolved = path.resolve()
     relative = resolved.relative_to(PROJECT_ROOT.resolve())
+    relative_url = quote(str(relative).replace("\\", "/"), safe="/")
+    if view:
+        back_relative = (back or path).resolve().relative_to(PROJECT_ROOT.resolve())
+        back_url = quote(str(back_relative).replace("\\", "/"), safe="")
+        url = f"/artifact-view?path={quote(str(relative), safe='')}&back={back_url}"
+    else:
+        url = "/artifacts/" + relative_url
+        if download:
+            url += "?download=1"
     return {
         "label": label,
         "path": str(resolved),
-        "url": "/artifacts/" + quote(str(relative).replace("\\", "/"), safe="/"),
+        "url": url,
         "primary": primary,
+        "download": download,
     }
+
+
+def _artifact_view_page(target: Path, back: Path) -> str:
+    if target.suffix.lower() == ".json":
+        try:
+            content = json.dumps(
+                json.loads(target.read_text(encoding="utf-8")),
+                indent=2,
+            )
+        except json.JSONDecodeError:
+            content = target.read_text(encoding="utf-8", errors="replace")
+    else:
+        content = target.read_text(encoding="utf-8", errors="replace")
+    target_relative = target.relative_to(PROJECT_ROOT.resolve())
+    back_relative = back.relative_to(PROJECT_ROOT.resolve())
+    download_url = "/artifacts/" + quote(
+        str(target_relative).replace("\\", "/"),
+        safe="/",
+    ) + "?download=1"
+    back_url = "/artifacts/" + quote(
+        str(back_relative).replace("\\", "/"),
+        safe="/",
+    )
+    title = target.stem.replace("_", " ").title()
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escape(title)} | SyntheticCAD</title>
+  <style>
+    :root {{ --ink:#17211f; --muted:#64706c; --line:#d7ddd9; --bg:#f3f5f2; --accent:#245c55; }}
+    * {{ box-sizing:border-box; }}
+    body {{ margin:0; background:var(--bg); color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; letter-spacing:0; }}
+    header {{ min-height:64px; padding:12px 22px; background:#fff; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; }}
+    h1 {{ margin:0; font-size:19px; }} .subtitle {{ color:var(--muted); font-size:12px; margin-top:3px; }}
+    .actions {{ display:flex; gap:8px; flex-wrap:wrap; }}
+    a {{ min-height:36px; padding:8px 12px; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--ink); text-decoration:none; font-size:12px; font-weight:700; }}
+    a.primary {{ background:var(--accent); border-color:var(--accent); color:#fff; }}
+    main {{ max-width:1200px; margin:18px auto; padding:0 18px 30px; }}
+    .note {{ border-left:4px solid var(--accent); background:#eef5f3; padding:11px 13px; font-size:12px; line-height:1.5; }}
+    pre {{ margin:14px 0 0; padding:16px; background:#101715; color:#dce8e3; border:1px solid #29332f; overflow:auto; max-height:calc(100vh - 190px); font:12px/1.55 Consolas,"Courier New",monospace; white-space:pre; }}
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>{escape(title)}</h1><div class="subtitle">Run artifact</div></div>
+    <div class="actions"><a href="{back_url}">Back to evidence</a><a class="primary" href="{download_url}">Download file</a></div>
+  </header>
+  <main>
+    <div class="note">Use <strong>Back to evidence</strong> to continue reviewing this run.</div>
+    <pre>{escape(content)}</pre>
+  </main>
+</body>
+</html>"""
 
 
 def _pick_csv() -> str:
@@ -304,10 +376,10 @@ def _run_job(params: dict[str, Any], job: JobState) -> dict[str, Any]:
         },
         "artifacts": [
             _artifact(dashboard_output, "Open Evidence Dashboard", primary=True),
-            _artifact(csv_output, "Synthetic CSV"),
-            _artifact(report_output, "Validation Report"),
-            _artifact(metadata_output, "SDV Metadata"),
-            _artifact(disclaimer_output, "Sharing Disclaimer"),
+            _artifact(csv_output, "Download Synthetic CSV", download=True),
+            _artifact(report_output, "Validation Report", view=True, back=dashboard_output),
+            _artifact(metadata_output, "SDV Metadata", view=True, back=dashboard_output),
+            _artifact(disclaimer_output, "Sharing Guidance", view=True, back=dashboard_output),
         ],
     }
 
@@ -414,7 +486,7 @@ def _page() -> str:
   </style>
 </head>
 <body>
-  <header><div class="brand">SyntheticCAD <small>Local data workspace</small></div><div class="local">Data stays on this computer</div></header>
+  <header><div class="brand">SyntheticCAD <small>Local data workspace</small></div><div class="local">Runs on this computer</div></header>
   <div class="shell">
     <aside>
       <div class="step-link active" data-step-link="1"><i>1</i><span>Choose data</span></div>
@@ -425,9 +497,9 @@ def _page() -> str:
     <main>
       <section class="step active" data-step="1">
         <h1>Choose a dataset</h1>
-        <p class="lead">Select a CSV from this computer. SyntheticCAD profiles it locally and identifies fields that need privacy treatment.</p>
+        <p class="lead">Choose a CSV. Review how each field will be handled before generation.</p>
         <div class="panel">
-          <div class="panel-head"><div><h2>Source CSV</h2><p>No file is uploaded to a server or cloud service.</p></div></div>
+          <div class="panel-head"><div><h2>Source CSV</h2><p>Profiling and generation happen on this computer.</p></div></div>
           <div class="file-row">
             <button type="button" class="secondary" id="pick-file">Choose CSV</button>
             <input id="csv-path" placeholder="Choose a file or paste its local path">
@@ -471,7 +543,7 @@ def _page() -> str:
               <div class="control"><label for="repeat-runs">Stability check</label><select id="repeat-runs"><option value="1">One run</option><option value="3">Three seeds</option></select></div>
             </div>
           </details>
-          <div class="notice" style="margin-top:14px">This run creates candidate synthetic data and review evidence. It does not certify zero privacy risk, legal clearance, or suitability for every research use.</div>
+          <div class="notice" style="margin-top:14px"><strong>Before sharing:</strong> Ask your privacy or legal reviewer to check exact matches, rare combinations, and unusually close records in the evidence dashboard.</div>
           <div class="actions"><button type="button" class="secondary" data-back="2">Back</button><button type="button" class="primary" id="start-run">Generate synthetic data</button></div>
         </div>
       </section>
@@ -481,10 +553,10 @@ def _page() -> str:
         <p class="lead" id="result-lead">Keep this window open while SyntheticCAD fits the model, generates rows, and evaluates the result.</p>
         <div id="running-view" class="run-panel">
           <div class="panel"><h2 id="job-status">Preparing the run</h2><div class="progress"><i></i></div><pre id="job-log">Waiting for the local job...</pre></div>
-          <div class="panel"><h2>What happens next</h2><p class="lead" style="font-size:12px;margin-bottom:0">The result includes a Basic Overview, Advanced Evidence, synthetic CSV, SDV metadata, and a sharing disclaimer.</p></div>
+          <div class="panel"><h2>What happens next</h2><p class="lead" style="font-size:12px;margin-bottom:0">Start with the evidence dashboard. It explains which patterns match and which privacy checks need attention.</p></div>
         </div>
         <div id="completed-view" class="hidden">
-          <div class="notice" style="margin-bottom:14px"><strong>Decision support, not certification.</strong> Similarity and overlap results must be reviewed together. A high fidelity score does not establish privacy.</div>
+          <div class="notice" style="margin-bottom:14px"><strong>Next step:</strong> Open the evidence dashboard. Review pattern differences, exact matches, rare combinations, and distance results before sharing.</div>
           <div class="result-grid" id="result-facts"></div>
           <div class="result-links" id="result-links"></div>
           <div class="actions"><button type="button" class="secondary" id="new-run">Start another run</button></div>
@@ -562,7 +634,7 @@ def _page() -> str:
       const label = seconds => seconds<60?`${{Math.ceil(seconds)}} sec`:seconds<3600?`${{Math.ceil(seconds/60)}} min`:`${{(seconds/3600).toFixed(1)}} hr`;
       center *= repeats;
       $('runtime-estimate').textContent = `${{label(Math.max(2,center*.65))}} - ${{label(Math.max(4,center*1.7))}}`;
-      $('runtime-note').textContent = `${{rows.toLocaleString()}} rows x ${{columns}} modeled fields x ${{repeats}} run${{repeats===1?'':'s'}}. ${{basis}} This is a planning estimate, not a promise.`;
+      $('runtime-note').textContent = `${{rows.toLocaleString()}} rows x ${{columns}} modeled fields x ${{repeats}} run${{repeats===1?'':'s'}}. ${{basis}} Actual time varies with the data and computer.`;
       $('epochs-control').classList.toggle('hidden', method !== 'ctgan');
     }}
     ['method','rows','epochs','repeat-runs'].forEach(id => $(id).addEventListener('input', updateEstimate));
@@ -582,12 +654,12 @@ def _page() -> str:
       setTimeout(pollJob,1000);
     }}
     function finishSuccess(result) {{
-      $('result-title').textContent='Evidence generated - agency review required'; $('result-lead').textContent='This is candidate synthetic data. Review the dashboard before downloading or sharing the output.';
+      $('result-title').textContent='Your evidence package is ready'; $('result-lead').textContent='Open the dashboard first. It explains the pattern match and highlights privacy checks for review.';
       $('running-view').classList.add('hidden'); $('completed-view').classList.remove('hidden');
       const s=result.summary; $('result-facts').innerHTML=[
         ['Source rows',s.real_rows.toLocaleString()],['Synthetic rows',s.synthetic_rows.toLocaleString()],['Fields evaluated',s.modeled_fields],['Exact identity combinations',`${{s.identity_matches.toLocaleString()}} of ${{s.identity_match_denominator.toLocaleString()}}`],['Stability evidence',`${{s.consistency_runs}} seed${{s.consistency_runs===1?'':'s'}}`]
       ].map(([label,value])=>`<div class="fact"><small>${{label}}</small><b>${{value}}</b></div>`).join('');
-      $('result-links').innerHTML=result.artifacts.map(item=>`<a class="artifact ${{item.primary?'primary':''}}" href="${{item.url}}" ${{item.primary?'target=\"_blank\"':''}}><span>${{escapeHtml(item.label)}}</span><b>Open</b></a>`).join('');
+      $('result-links').innerHTML=result.artifacts.map(item=>`<a class="artifact ${{item.primary?'primary':''}}" href="${{item.url}}" ${{item.download?'download':'target=\"_blank\"'}}><span>${{escapeHtml(item.label)}}</span><b>${{item.download?'Save':'Open'}}</b></a>`).join('');
     }}
     function finishError(message) {{ $('result-title').textContent='Run stopped'; $('result-lead').textContent=message; $('job-status').textContent='Failed'; }}
     $('new-run').addEventListener('click',()=>showStep(1));
@@ -612,8 +684,17 @@ class AppHandler(BaseHTTPRequestHandler):
             if payload is None:
                 return self._send_json({"error": "Job not found"}, HTTPStatus.NOT_FOUND)
             return self._send_json(payload)
+        if parsed.path == "/artifact-view":
+            query = parse_qs(parsed.query)
+            return self._send_artifact_view(
+                query.get("path", [""])[0],
+                query.get("back", [""])[0],
+            )
         if parsed.path.startswith("/artifacts/"):
-            return self._send_artifact(parsed.path[len("/artifacts/") :])
+            return self._send_artifact(
+                parsed.path[len("/artifacts/") :],
+                download=parse_qs(parsed.query).get("download", ["0"])[0] == "1",
+            )
         self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
@@ -657,11 +738,31 @@ class AppHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_artifact(self, raw_path: str) -> None:
+    def _artifact_target(self, raw_path: str) -> Path | None:
         target = (PROJECT_ROOT / unquote(raw_path)).resolve()
         try:
             target.relative_to(PROJECT_ROOT.resolve())
         except ValueError:
+            return None
+        return target
+
+    def _send_artifact_view(self, raw_path: str, raw_back: str) -> None:
+        target = self._artifact_target(raw_path)
+        back = self._artifact_target(raw_back)
+        if target is None or back is None:
+            return self._send_json({"error": "Invalid path"}, HTTPStatus.FORBIDDEN)
+        if not target.is_file() or not back.is_file():
+            return self._send_json({"error": "File not found"}, HTTPStatus.NOT_FOUND)
+        if target.suffix.lower() not in {".json", ".txt"}:
+            return self._send_json(
+                {"error": "This artifact cannot be previewed."},
+                HTTPStatus.BAD_REQUEST,
+            )
+        return self._send_html(_artifact_view_page(target, back))
+
+    def _send_artifact(self, raw_path: str, download: bool = False) -> None:
+        target = self._artifact_target(raw_path)
+        if target is None:
             return self._send_json({"error": "Invalid path"}, HTTPStatus.FORBIDDEN)
         if not target.is_file():
             return self._send_json({"error": "File not found"}, HTTPStatus.NOT_FOUND)
@@ -677,6 +778,11 @@ class AppHandler(BaseHTTPRequestHandler):
             "Content-Type",
             content_types.get(target.suffix.lower(), "application/octet-stream"),
         )
+        if download:
+            self.send_header(
+                "Content-Disposition",
+                f'attachment; filename="{target.name}"',
+            )
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

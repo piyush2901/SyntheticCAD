@@ -19,6 +19,7 @@ from syntheticcad.tabular import (
     estimate_runtime,
 )
 from syntheticcad.tabular_dashboard import write_tabular_dashboard
+from syntheticcad.local_app import PROJECT_ROOT, _artifact, _artifact_view_page
 
 
 class SensitivePipelineTests(unittest.TestCase):
@@ -230,10 +231,30 @@ class SensitivePipelineTests(unittest.TestCase):
             html = path.read_text(encoding="utf-8")
         self.assertIn("Basic Overview", html)
         self.assertIn("Advanced Evidence", html)
-        self.assertIn("no real source records", html)
+        self.assertIn("Aggregate comparisons and synthetic samples only", html)
+        self.assertIn("Pattern Over Time", html)
+        self.assertIn("Metric Guide", html)
         self.assertNotIn("Real records", html)
         self.assertNotIn('"real_rows"', html)
         self.assertNotIn("Alex", html)
+
+    def test_artifact_view_returns_to_evidence(self) -> None:
+        with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as directory:
+            folder = Path(directory)
+            report = folder / "validation_report.json"
+            dashboard = folder / "validation_dashboard.html"
+            report.write_text('{"score": 0.9}', encoding="utf-8")
+            dashboard.write_text("<html></html>", encoding="utf-8")
+            artifact = _artifact(
+                report,
+                "Validation Report",
+                view=True,
+                back=dashboard,
+            )
+            html = _artifact_view_page(report.resolve(), dashboard.resolve())
+        self.assertIn("/artifact-view?", artifact["url"])
+        self.assertIn("Back to evidence", html)
+        self.assertIn("Download file", html)
 
 
 if __name__ == "__main__":

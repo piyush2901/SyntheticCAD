@@ -715,13 +715,13 @@ def synthesize_single_table(
                     "Not available.",
                 ),
                 "overall_score_meaning": (
-                    "SDV overall quality is an aggregate of the quality components SDV "
-                    "could score in this run. See the component breakdown; it is not a "
-                    "privacy score or row-level accuracy score."
+                    "SDV combines the quality components it could score. Use the "
+                    "component breakdown for statistical similarity and review the "
+                    "privacy screens separately."
                 ),
                 "diagnostic_meaning": (
-                    "The SDV diagnostic is a basic validity gate for data types, ranges, "
-                    "and structural rules. It is not a performance or privacy score."
+                    "The validity gate checks data types, ranges, and structural rules. "
+                    "After it passes, continue with the pattern and privacy review."
                 ),
             },
         },

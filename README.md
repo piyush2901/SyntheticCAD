@@ -30,6 +30,14 @@ Most users do not need Python or the source code.
 See the [simple Windows download and installation guide](docs/WINDOWS_INSTALL_GUIDE.md)
 for step-by-step instructions and troubleshooting.
 
+## Try The Hosted Workflow
+
+The [GitHub Pages workflow demo](https://piyush2901.github.io/SyntheticCAD/demo.html)
+lets users load a small fictitious sample, review field treatments, select
+attributes, and open a precomputed SDV evidence dashboard. CSV profiling happens
+inside the browser. GitHub Pages does not run SDV synthesis; use the Windows app
+for live generation on local data.
+
 ## Current MVP
 
 The guided local application provides:
